@@ -166,8 +166,6 @@ int main(void)
 
 	TimingBench executionTimingBench(timingExecutionBenchWrapper, &htim5, timingNbAttempts, TimeUnit::Microseconds);
 
-  std::cout << "START" << std::endl;  // Synchronise with PC
-  std::cout << "Seed STM32 : " << seed << std::endl;
   char buffStart;
 
   /* USER CODE END 2 */
@@ -177,41 +175,46 @@ int main(void)
 	while (1)
 	{
 
-    read(STDIN_FILENO, &buffStart, sizeof(char));
-		if(buffStart == '\n'){
-
-			// Reset pendulum environment and store the initial conditions
-			pendulum.reset(seed);
-			initAngle = pendulum.getAngle();
-			initVelocity = pendulum.getVelocity();
-
-      /* Energy consumption measurements */
-
-			std::cout << "Starting energy bench" << std::endl;
-
-			std::cout << logStart << std::endl;
-			energybench.startBench();
-			std::cout << logEnd << std::endl;
-
-			std::cout << "Exiting energy bench" << std::endl;
-
-
-      /* Execution time measurement without energy measurement interruptions */
-
-			std::cout << "Starting inference execution time bench" << std::endl;
-
-			executionTimingBench.startBench();
-			std::cout << logStart << std::endl;
-			executionTimingBench.printResult();
-			std::cout << logEnd << std::endl;
-
-
-			std::cout << "Exiting inference execution time bench" << std::endl;
-
-
-			std::cout << "END" << std::endl;
-			while(1) {}		// Waiting for reset
+    //synchronization with PC
+		do {
+		  std::cout << "START" << std::endl;  // send (SYN) signal
+			std::cout << "Seed STM32 : " << seed << std::endl;
+			read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
+		  HAL_Delay(1000);  // wait for 1 second
 		}
+		while (buffStart != '\n'); // (ACK) signal is a newline character
+
+    // Reset pendulum environment and store the initial conditions
+    pendulum.reset(seed);
+    initAngle = pendulum.getAngle();
+    initVelocity = pendulum.getVelocity();
+
+    /* Energy consumption measurements */
+
+    std::cout << "Starting energy bench" << std::endl;
+
+    std::cout << logStart << std::endl;
+    energybench.startBench();
+    std::cout << logEnd << std::endl;
+
+    std::cout << "Exiting energy bench" << std::endl;
+
+
+    /* Execution time measurement without energy measurement interruptions */
+
+    std::cout << "Starting inference execution time bench" << std::endl;
+
+    executionTimingBench.startBench();
+    std::cout << logStart << std::endl;
+    executionTimingBench.printResult();
+    std::cout << logEnd << std::endl;
+
+
+    std::cout << "Exiting inference execution time bench" << std::endl;
+
+
+    std::cout << "END" << std::endl;
+    while(1) {}		// Waiting for reset
 
     /* USER CODE END WHILE */
 

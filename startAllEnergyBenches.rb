@@ -4,6 +4,7 @@
 require 'fileutils'
 require 'optparse'
 require 'json'
+require 'timeout'
 
 require 'serialport'
 
@@ -63,9 +64,12 @@ def getValidDirectories (dir, requiredFiles)
 
 end
 
-# Exit the script if last call to a subprocess return an exit code different from 0
-def checkExitstatus
-    exit 1 if $?.exitstatus != 0
+# Exit the script with an error message if the last call to a subprocess returns an exit code different from 0
+def checkExitstatus(error_message)
+    if $?.exitstatus != 0
+        puts "Exit point: #{error_message}"
+        exit 1
+    end
 end
 
 
@@ -124,10 +128,10 @@ Dir.chdir "#{__dir__}"  # Set current script current directory, so we can execut
 
 if stages["CodeGen"]
     
-    puts "\033[1;31m=====[ CodeGen stage ]=====\033[0m"
+    puts "\033[1;32m=====[ CodeGen stage ]=====\033[0m"
 
     system("./scripts/generate_TPG.sh")
-    checkExitstatus
+    checkExitstatus("generate TPG")
 
 end
 
@@ -136,14 +140,19 @@ end
 
 if stages["Measures"]
 
-    puts "\033[1;31m=====[ Measurments stage ]=====\033[0m"
+    puts "\033[1;32m=====[ Measurments stage ]=====\033[0m"
 
 
     requiredFiles = ["CodeGen/pendulum.c", "CodeGen/pendulum.h", "CodeGen/pendulum_program.c", "CodeGen/pendulum_program.h"]
     valid_TPG_directories = getValidDirectories("TPG", requiredFiles)
 
-    puts "Valid TPG subdirectories are #{valid_TPG_directories}"
-
+    if valid_TPG_directories.empty?
+        puts "\033[0;31mError: There are no valid TPG subdirectories. Please verify the content of your /TPG folder."
+        puts "\033[0;31mEnsure that it respects the structure described in: https://github.com/allpaul0/gegelati-pendulum-embedded/tree/master/TPG/README.md"
+        exit 1
+    else 
+        puts "Valid TPG subdirectories are #{valid_TPG_directories}"
+    end
 
     # Compiling, flashing on STM32, do inference and analyse results for each TPG
 
@@ -163,7 +172,7 @@ if stages["Measures"]
         # No matter the TPG, the program on the STM32 will always initialise itself the same way and its random number generator too.
         # We want the TPGs to have a random initial state, so the seed used to initialise it is geerated via this ruby script.
         system("make all -C ./bin TPG_SEED=#{seed} TPG_CODEGEN_PATH=../#{tpgDirName}/CodeGen")
-        checkExitstatus
+        checkExitstatus("make all -C CodeGen")
     
         # Moving .elf binary to the current TPG subdirectory
         srcElf = "bin/PendulumEmbeddedMeasures.elf"
@@ -176,7 +185,7 @@ if stages["Measures"]
         # Loading is done using the program STM32_Programer_CLI
     
         system("STM32_Programmer_CLI -c port=SWD -w #{destElf}/PendulumEmbeddedMeasures.elf -rst")
-        checkExitstatus
+        checkExitstatus("STM32_Programmer_CLI")
     
     
         # === Start serial interface and inference ===
@@ -191,22 +200,34 @@ if stages["Measures"]
 
         SerialPort.open(serialPortPath, baud = 115200) { |serialport|
 
-            # The way the ruby script synchronise with the STM32 isn't perfect, and might sometimes not work.
-            # It might be good to add a periodic retry in the script or on the board to avoid synchornisation failure.
+            # The ruby script synchronizes with the STM32 using a periodic retry on the board
 
-            until (serialport.readline == "START\r\n") do end   # Waiting for STM32 to synchronise
-            serialport << "\n"  # The STM32 is waiting for a newline character, which will start the inference
-    
-            continue = true
-            while continue
-                line = serialport.readline
-    
-                puts line
-                logFile << line
-    
-                continue = (line != "END\r\n")
+            begin
+                Timeout.timeout(10) do
+                until (serialport.readline == "START\r\n") do end   # Waiting for STM32 to send the first signal (SYN)
+                serialport << "\n"  # Sending back to the STM32 a newline character (ACK), which will start the inference
+
+                continue = true
+                while continue
+                    line = serialport.readline
+        
+                    puts line
+                    logFile << line
+        
+                    continue = (line != "END\r\n")
+                end
             end
-
+            rescue Timeout::Error
+                puts "\033[0;31mSynchronization failed. Timed out after 10 seconds.\033[0m"
+                puts "\033[0;31mDeleting generated results dir.\033[0m"
+                
+                # Delete the generated incomplete directory since its presence will be an obstacle for 
+                # the rest of the script and it has no meaningfull informations
+                logFile.close
+                system("rm #{resultPath}/energy.log")
+                system("rmdir #{resultPath}")
+                exit 1
+            end
         }
 
         logFile.close
@@ -227,7 +248,7 @@ if stages["Measures"]
 
     # Displaying global results
 
-    puts "===[ Results summary ]==="
+    puts "\033[1;36m=====[ Results summary ]=====\033[0m"
 
     valid_TPG_directories.sort!.each { |tpgDirName|
         puts "#{tpgDirName}"
@@ -245,10 +266,11 @@ end
 
 if stages["Analysis"]
 
-    puts "\033[1;31m=====[ Analysis stage ]=====\033[0m"
+    puts "\033[1;32m=====[ Analysis stage ]=====\033[0m"
 
     Dir.glob("TPG/*/*_results")
-        .filter { |d| not File.exist? "#{d}/executionStats.json" }
+        .filter { |d| not File.exist? "#{d}/executionStats.json" }  # if the file executionStats.json exists, the processing has already been done in the past  
+        .filter { |d| File.exist? "#{d}/energy_data.json" }  # make sure the file energy_data.json exists
         .each { |d|
             
             codeGenPath = "#{d}/../CodeGen"
@@ -259,7 +281,7 @@ if stages["Analysis"]
 
             # CMake ExecutionStats target compilation
             system("cmake --build Trainer-Generator/bin --target ExecutionStats")
-            checkExitstatus
+            checkExitstatus("cmake ExecutionStats")
 
             # Get initial values from results of the energy bench
             energyData = {}
@@ -267,8 +289,7 @@ if stages["Analysis"]
             
             # Start replay and execution stats export for 1000 inferences
             system("./Trainer-Generator/bin/Release/ExecutionStats #{codeGenPath}/out_best.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
-            checkExitstatus
-            puts
+            checkExitstatus("./ExecutionStats")
 
             # Move executions_stats.json to result directory
             FileUtils.mv("#{codeGenPath}/executionStats.json", "#{d}")
@@ -281,13 +302,13 @@ end
 
 if stages["PlotResults"]
     
-    puts "\033[1;31m=====[ PlotResults stage ]=====\033[0m"
+    puts "\033[1;32m=====[ PlotResults stage ]=====\033[0m"
     
     if showGraph
         system("julia --project ./scripts/generate_energy_plots.jl --show")
-        checkExitstatus
+        checkExitstatus("julia generate_energy_plots.jl --show")
     else
         system("julia --project ./scripts/generate_energy_plots.jl")
-        checkExitstatus
+        checkExitstatus("julia generate_energy_plots.jl")
     end
 end

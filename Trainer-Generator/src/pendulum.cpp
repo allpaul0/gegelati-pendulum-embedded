@@ -129,7 +129,7 @@ bool Pendulum::isTerminal() const
 	if (this->nbActionsExecuted >= Pendulum::REWARD_HISTORY_SIZE) {
 		// Compute mean reward
 		double accumulatedReward = 0.0;
-		for (auto idx = 0; idx < Pendulum::REWARD_HISTORY_SIZE; idx++) {
+		for (size_t idx = 0; idx < Pendulum::REWARD_HISTORY_SIZE; idx++) {
 			accumulatedReward += this->rewardHistory[idx];
 		}
 		accumulatedReward /= (double)Pendulum::REWARD_HISTORY_SIZE;
