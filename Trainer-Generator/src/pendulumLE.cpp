@@ -1,7 +1,7 @@
 #define _USE_MATH_DEFINES // To get M_PI
 #include <math.h>
 
-#include "pendulum.h"
+#include "pendulumLE.h"
 
 const double Pendulum::MAX_SPEED = 8.0;
 const double Pendulum::MAX_TORQUE = 2.0;
@@ -35,11 +35,11 @@ double Pendulum::getVelocity() const
 std::vector<std::reference_wrapper<const Data::DataHandler>> Pendulum::getDataSources()
 {
 	auto result = std::vector<std::reference_wrapper<const Data::DataHandler>>();
-	result.push_back(this->currentState);
+	result.emplace_back(this->currentState);
 	return result;
 }
 
-void Pendulum::reset(size_t seed, Learn::LearningMode mode)
+void Pendulum::reset(size_t seed, Learn::LearningMode mode, uint16_t iterationNumber, uint64_t generationNumber)
 {
 	// Create seed from seed and mode
 	size_t hash_seed = Data::Hash<size_t>()(seed) ^ Data::Hash<Learn::LearningMode>()(mode);
@@ -52,13 +52,6 @@ void Pendulum::reset(size_t seed, Learn::LearningMode mode)
 	this->setVelocity(this->rng.getDouble(-1.0, 1.0));
 	this->nbActionsExecuted = 0;
 	this->totalReward = 0.0;
-}
-
-void Pendulum::reset(double initalAngle, double initialVelocity){
-    this->setAngle(initalAngle);
-    this->setVelocity(initialVelocity);
-    this->nbActionsExecuted = 0;
-    this->totalReward = 0.0;
 }
 
 double Pendulum::getActionFromID(const uint64_t& actionID)

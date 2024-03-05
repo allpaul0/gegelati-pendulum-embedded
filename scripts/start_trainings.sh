@@ -12,7 +12,8 @@ checkExitStatus() {
     fi
 }
 
-SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+# move from the current dir to Trainer-Generator - ${BASH_SOURCE[0]} = name of current script called
+SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd) # get the absolute path of the calling script
 cd $SCRIPT_DIR/../Trainer-Generator     # Train-Generator
 checkExitStatus
 
@@ -31,6 +32,12 @@ do
     # ... copy the necessary files and start the training
 
     cp to_train/$d/instructions.cpp src/
+    checkExitStatus
+    cp to_train/$d/instructions.h src/
+    checkExitStatus
+    cp to_train/$d/pendulumLE.cpp src/.
+    checkExitStatus
+    cp to_train/$d/pendulumLE.h src/.
     checkExitStatus
     cp to_train/$d/params.json .
     checkExitStatus

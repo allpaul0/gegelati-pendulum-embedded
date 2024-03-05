@@ -5,7 +5,7 @@
 #include <gegelati.h>
 
 #include "instructions.h"
-#include "pendulum.h"
+#include "pendulumLE.h"
 
 #define DEFAULT_NB_ACTIONS 1000
 // #define VERBOSE

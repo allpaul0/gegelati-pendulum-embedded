@@ -10,7 +10,8 @@ A valid TPG directory tree has a structure as follows :
             * out_best.dot **(required)** --> dot file of the TPG
             * instructions.cpp **(required)** --> provides a function `void fillInstructionSet(Instructions::Set& set)` which will add all instructions used to train the TPG to an `Instruction::Set` object
             * params.json **(required)** --> training parameters of the TPG
-            * pendulum.c/.h, pendulum_program.c/.h *(generated)* --> codegen files of the TPG
+            * pendulumLE.cpp/.h **(required)** --> pendulum environment associated to the TPG
+            * TPGGraph.c/.h, TPGprograms.c/.h *(generated)* --> codegen files of the TPG
             * PendulumEmbeddedMeasures.elf *(generated)*
             * \+ additional files you would like to put here (like TPG training results)
         * *_results/ *(generated)* --> for each energy measurement

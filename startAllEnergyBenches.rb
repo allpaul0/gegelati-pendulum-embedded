@@ -143,7 +143,7 @@ if stages["Measures"]
     puts "\033[1;32m=====[ Measurments stage ]=====\033[0m"
 
 
-    requiredFiles = ["CodeGen/pendulum.c", "CodeGen/pendulum.h", "CodeGen/pendulum_program.c", "CodeGen/pendulum_program.h"]
+    requiredFiles = ["CodeGen/TPGGraph.c", "CodeGen/TPGGraph.h", "CodeGen/TPGprograms.c", "CodeGen/TPGprograms.h"]
     valid_TPG_directories = getValidDirectories("TPG", requiredFiles)
 
     if valid_TPG_directories.empty?

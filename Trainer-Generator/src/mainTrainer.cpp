@@ -3,9 +3,8 @@
 #include <ctime>
 #include <gegelati.h>
 
-#include "pendulum.h"
+#include "pendulumLE.h"
 #include "instructions.h"
-
 
 int main() {
     std::cout << "\033[1;33m=====[ Trainer target ]=====\033[0m" << std::endl;
@@ -49,10 +48,10 @@ int main() {
     /* Training */
     std::cout << "Starting training for " << params.nbGenerations << " generations" << std::endl;
 
-    for (int i = 0; i < params.nbGenerations; i++){
+    for (uint64_t i = 0; i < params.nbGenerations; i++){
         // Setting dot exporter for generation graph
         char buff[100];
-        sprintf(buff, RESULT_EXPORT_PATH "/dotfiles/out_%04d.dot", i);
+        sprintf(buff, RESULT_EXPORT_PATH "/dotfiles/out_%04ld.dot", i);
         dotExporter.setNewFilePath(buff);
         dotExporter.print();
 

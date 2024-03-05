@@ -1,5 +1,5 @@
-#ifndef PENDULUM_H
-#define PENDULUM_H
+#ifndef PENDULUMLE_H
+#define PENDULUMLE_H
 
 #include <gegelati.h>
 
@@ -90,9 +90,10 @@ public:
 	virtual std::vector<std::reference_wrapper<const Data::DataHandler>> getDataSources() override;
 
 	/// Inherited via LearningEnvironment
-	virtual void reset(size_t seed = 0, Learn::LearningMode mode = Learn::LearningMode::TRAINING) override;
-
-    virtual void reset(double initalAngle, double initialVelocity);
+	virtual void reset(size_t seed = 0, 
+		Learn::LearningMode mode = Learn::LearningMode::TRAINING,
+		uint16_t iterationNumber = 0, 
+		uint64_t generationNumber = 0) override;
 
 	/**
 	* \brief Get the action from its associated ID.
@@ -142,4 +143,4 @@ public:
 	virtual bool isTerminal() const override;
 };
 
-#endif // !PENDULUM_H
+#endif // !PENDULUMLE_H
