@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 	fillInstructionSet(set);
     // Parameters
     Learn::LearningParameters params;
-    File::ParametersParser::loadParametersFromJson((dotPath.parent_path().string() + "/params.json").c_str(), params);
+    File::ParametersParser::loadParametersFromJson((dotPath.parent_path().string() + "/../src/params.json").c_str(), params);
 
     /* Setup TPG environment for import */
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     std::cout << "CodeGen files generation" << std::endl;
     
     CodeGen::TPGGenerationEngineFactory factory(CodeGen::TPGGenerationEngineFactory::switchMode);
-    std::unique_ptr<CodeGen::TPGGenerationEngine> tpggen = factory.create("TPG", dotGraph, dotPath.parent_path().string() + "/");
+    std::unique_ptr<CodeGen::TPGGenerationEngine> tpggen = factory.create("TPG", dotGraph, dotPath.parent_path().string() + "/../CodeGen/");
     tpggen->generateTPGGraph();
 
     std::cout << "End program" << std::endl;

@@ -43,7 +43,8 @@ file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results/dotfiles)
 file(GLOB_RECURSE
         files
         ./src/instructions.*
-        ./src/pendulumLE.*
+        ./src/PendulumLearningEnvironment.*
+        ./src/approximateComputingTools.h
         ./params.json
         )
 include_directories(${GEGELATI_INCLUDE_DIRS})

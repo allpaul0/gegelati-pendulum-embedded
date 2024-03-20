@@ -9,4 +9,5 @@
 #endif
 
 #include <math.h>
+#include "approximateComputingTools.h"
 #endif

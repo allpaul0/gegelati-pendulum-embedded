@@ -79,6 +79,8 @@ end
 # Measure : compile, load and run measurements on the STM32 board, and store results, for all valid subdirectories of TPG/
 # AnalyzeExecutions : from the measurement results, compute new data and export statistics about the execution that has been measured
 # PlotResults : take all statistics from the previous step and render graphs and plots using julia script and module PlotlyJS 
+# Skip multiple phases
+# $./startAllEnergyBenches.rb --skip CodeGen --skip Analysis --skip PlotResults --same-seed 0
 
 # If false, the step is skipped
 stages = { "CodeGen" => true, "Measures" => true, "Analysis" => true, "PlotResults" => true}
@@ -130,7 +132,7 @@ if stages["CodeGen"]
     
     puts "\033[1;32m=====[ CodeGen stage ]=====\033[0m"
 
-    system("./scripts/generate_TPG.sh")
+    system("./scripts/generate_TPG.rb")
     checkExitstatus("generate TPG")
 
 end
@@ -141,7 +143,6 @@ end
 if stages["Measures"]
 
     puts "\033[1;32m=====[ Measurments stage ]=====\033[0m"
-
 
     requiredFiles = ["CodeGen/TPGGraph.c", "CodeGen/TPGGraph.h", "CodeGen/TPGprograms.c", "CodeGen/TPGprograms.h"]
     valid_TPG_directories = getValidDirectories("TPG", requiredFiles)
@@ -165,35 +166,73 @@ if stages["Measures"]
 
     valid_TPG_directories.each { |tpgDirName|
 
+          # === Moving file for cross-compilation ===
+
+        # Source files
+        dest = "PendulumEmbeddedSTMProject/Core/Src/Pendulum"
+        ["TPGGraph.c", "TPGprograms.c"].each { |f|
+            
+            src = "#{tpgDirName}/CodeGen/#{f}"
+            FileUtils.cp(src, dest)
+        }
+
+        # Header files
+        dest = "PendulumEmbeddedSTMProject/Core/Inc/Pendulum"
+        ["TPGGraph.h", "TPGprograms.h"].each { |f|
+
+            src = "#{tpgDirName}/CodeGen/#{f}"
+            FileUtils.cp(src, dest)
+        }
+
         # === Compiling executable ===
 
         seed = sameSeed ? common_seed : rand(C_UINT_MAX)
+
+        puts "\033[1;32m=====[ Compilation of the embedded binary ]=====\033[0m"
+
+        # equivalent bash command
+        # PATH=/opt/st/stm32cubeide_1.13.2/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.11.3.rel1.linux64_1.1.1.202309131626/tools/bin:$PATH
+        # Otherwise, arm-none-eabi-g++: error: unrecognized command-line option '-fcyclomatic-complexity'
+        # make clean -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench
+        # make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench
+        # -j20 = 20 jobs; passing the compiler to the PATH is necessary for reproducing the build from STM32CubeIDE
     
         # No matter the TPG, the program on the STM32 will always initialise itself the same way and its random number generator too.
         # We want the TPGs to have a random initial state, so the seed used to initialise it is geerated via this ruby script.
-        system("make all -C ./bin TPG_SEED=#{seed} TPG_CODEGEN_PATH=../#{tpgDirName}/CodeGen")
+        if tpgDirName.include?("int")
+            system("make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench TPG_SEED=0 TYPE_INT=1")
+        else
+            system("make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench TPG_SEED=#{seed}")
+        end
         checkExitstatus("make all -C CodeGen")
     
         # Moving .elf binary to the current TPG subdirectory
-        srcElf = "bin/PendulumEmbeddedMeasures.elf"
+        srcElf = "PendulumEmbeddedSTMProject/ReleaseEnergyBench/PendulumEmbeddedSTMProject.elf"
         destElf = "#{tpgDirName}/CodeGen"
         FileUtils.cp(srcElf, destElf)
     
     
         # === Loading program on STM32 flash memory ===
 
+        puts "\033[1;32m=====[ Loading the binary ]=====\033[0m"
+
         # Loading is done using the program STM32_Programer_CLI
-    
-        system("STM32_Programmer_CLI -c port=SWD -w #{destElf}/PendulumEmbeddedMeasures.elf -rst")
+     
+        system("STM32_Programmer_CLI -c port=SWD -w #{destElf}/PendulumEmbeddedSTMProject.elf -rst") # c: connect | rst: reset system
         checkExitstatus("STM32_Programmer_CLI")
     
     
         # === Start serial interface and inference ===
 
         # Create subdirectory to save results
-        resultPath = "#{tpgDirName}/#{resultDirPrefix}_results"
+        inferencePath = "#{tpgDirName}/inference"
+        unless Dir.exist?("#{inferencePath}")
+            Dir.mkdir(inferencePath)
+        end
+        resultPath = "#{inferencePath}/#{resultDirPrefix}" # a timestamp marks the identity of the folder containing the data
         FileUtils.mkdir(resultPath)
-    
+        checkExitstatus("mkdir resultPath timestamp")
+
         # energy.log stores messages received from the STM32 board
         logPath = "#{resultPath}/energy.log"
         logFile = File.open(logPath, "w+");
@@ -268,17 +307,21 @@ if stages["Analysis"]
 
     puts "\033[1;32m=====[ Analysis stage ]=====\033[0m"
 
-    Dir.glob("TPG/*/*_results")
+    Dir.glob("TPG/*/inference/*")
         .filter { |d| not File.exist? "#{d}/executionStats.json" }  # if the file executionStats.json exists, the processing has already been done in the past  
         .filter { |d| File.exist? "#{d}/energy_data.json" }  # make sure the file energy_data.json exists
         .each { |d|
             
-            codeGenPath = "#{d}/../CodeGen"
+            codeGenPath = "#{d}/../../CodeGen"
+            srcPath = "#{d}/../../src"
+            trainingPath= "#{d}/../../training"
 
-            # Copying instructions.cpp and params.json
-            FileUtils.cp("#{codeGenPath}/instructions.cpp", "Trainer-Generator/src")
-            FileUtils.cp("#{codeGenPath}/params.json", "Trainer-Generator")
-
+            # Copying required files for generating Executions stats
+            puts "#{srcPath}/instructions.cpp"
+            FileUtils.cp("#{srcPath}/instructions.cpp", "Trainer-Generator/src")
+            FileUtils.cp("#{srcPath}/params.json", "Trainer-Generator")
+            checkExitstatus("cp src dest ExecutionStats")
+            
             # CMake ExecutionStats target compilation
             system("cmake --build Trainer-Generator/bin --target ExecutionStats")
             checkExitstatus("cmake ExecutionStats")
@@ -288,11 +331,11 @@ if stages["Analysis"]
             File.open("#{d}/energy_data.json") { |io| energyData = JSON.load(io) }
             
             # Start replay and execution stats export for 1000 inferences
-            system("./Trainer-Generator/bin/Release/ExecutionStats #{codeGenPath}/out_best.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
+            system("./Trainer-Generator/bin/Release/ExecutionStats #{trainingPath}/out_best.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
             checkExitstatus("./ExecutionStats")
 
             # Move executions_stats.json to result directory
-            FileUtils.mv("#{codeGenPath}/executionStats.json", "#{d}")
+            FileUtils.mv("#{trainingPath}/executionStats.json", "#{d}")
         }
 
 end

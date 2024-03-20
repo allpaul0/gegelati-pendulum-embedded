@@ -3,7 +3,7 @@
 #include <ctime>
 #include <gegelati.h>
 
-#include "pendulumLE.h"
+#include "PendulumLearningEnvironment.h"
 #include "instructions.h"
 
 int main() {
@@ -14,8 +14,8 @@ int main() {
     /* Settings */
 
     // Instruction set
-    Instructions::Set set;
-    fillInstructionSet(set);
+    Instructions::Set instructionSet;
+    fillInstructionSet(instructionSet);
     // Learning parameters
     Learn::LearningParameters params;
     File::ParametersParser::loadParametersFromJson(PROJECT_ROOT_PATH "/params.json", params);
@@ -23,12 +23,15 @@ int main() {
     /* Trainings objects */
 
     // Learning environment
-    Pendulum pendulumLE({ 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 });
+    PendulumLearningEnvironment pendulumLE({ 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 });
     // Learning agent
     size_t seed = time(nullptr);
-    Learn::ParallelLearningAgent la(pendulumLE, set, params);
+    Learn::ParallelLearningAgent la(pendulumLE, instructionSet, params);
     la.init(seed);
 
+    /* Training message*/
+    std::cout << "Starting training for " << params.nbGenerations << " generations" << std::endl;
+    
     /* Log and output setup */
 
     // Log
@@ -41,12 +44,12 @@ int main() {
     std::ofstream stats;
     stats.open(RESULT_EXPORT_PATH "/bestPolicyStats.md");
     Log::LAPolicyStatsLogger policyStatsLogger(la, stats);
-    // Export used parameters
+    // Export parameters before starting training.
+    // These may differ from imported parameters because of LE or machine specific
+	// settings such as thread count of number of actions.
     File::ParametersParser::writeParametersToJson(RESULT_EXPORT_PATH "/exported_params.json", params);
 
-
     /* Training */
-    std::cout << "Starting training for " << params.nbGenerations << " generations" << std::endl;
 
     for (uint64_t i = 0; i < params.nbGenerations; i++){
         // Setting dot exporter for generation graph
@@ -79,10 +82,8 @@ int main() {
     bestStats.close();
     stats.close();
 
-    // Delete instructions
-    for (unsigned int i = 0; i < set.getNbInstructions(); i++) {
-        delete (&set.getInstruction(i));
-    }
+    // Cleanup instruction set
+	deleteInstructions(instructionSet);
 
     trainLogFile.close();
 

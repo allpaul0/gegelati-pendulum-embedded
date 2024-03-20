@@ -6,7 +6,7 @@
 #include "TimeUnit.h"
 
 TimingBench::TimingBench(void (*fun)(void), TIM_HandleTypeDef * timer, int nbAttempts, TimeUnit unit, float unitMultiplier)
-		: Bench(fun), tim(timer), timerUnit(unit), timerMultiplier(unitMultiplier), nbAttempts(nbAttempts), result(-1)
+	: Bench(fun), tim(timer), timerUnit(unit), timerMultiplier(unitMultiplier), nbAttempts(nbAttempts), result(-1)
 {
 	HAL_TIM_Base_Stop(timer);
 }

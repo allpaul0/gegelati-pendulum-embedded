@@ -1,25 +1,28 @@
-#ifndef PENDULUMENVIRONMENT_H
-#define PENDULUMENVIRONMENT_H
+#ifndef PENDULUM_EMBEDDED_LE_H
+#define PENDULUM_EMBEDDED_LE_H
 
 #include <vector>
 #include <cstdint>
 
 #include "ina219.h"
+#include "approximateComputingTools.h"
 
 #ifndef STM32
 #include <iostream>
 #endif
 
 /**
- * \brief Pendulum environment.
+ * \brief Pendulum Execution Environment for execution on embedded system.
  * 
  * This environment is based on the pendulum from the gegelati-apps repository.
+ * However this environment does not inherit the LearningEnvironment of the 
+ * GEGELATI lib. Neither does it uses any of its functions. 
  * It only keeps  the pendulum simulation part and use a CodeGen TPG to
- * do action inferences.
- * CodeGen files (pendulum.h/.c and pendulum_program.h/.c) are thus required
+ * do action inferences. It is aimed towards Embedded systems inference.
+ * CodeGen files (TPGGraph.h/.c and TPGPrograms.h/.c) are thus required
  * for this environment.
  */
-class PendulumEnvironment {
+class PendulumExecutionEnvironment {
 private:
 
     // Constants for the pendulum behavior
@@ -48,29 +51,37 @@ private:
 	/// Current step during inference, -1 otherwise. Used by interrupt code and for debug.
 	volatile int currentStep;
 
-public:
+
     /// Setter for angle state.
     void setAngle(double newValue);
 
     /// Setter for velocity.
     void setVelocity(double newValue);
-
+public:
     /// Current angle and velocity provided to the LearningAgent :
     /// - currentState[0] --> Current angle of the pendulum in [-M_PI; M_PI]
     /// - currentState[1] --> Current velocity of the pendulum in [-1;1]
     /// This must be public to be exposed to the inference program.
     double currentState[2];
 
+    #ifndef TYPE_INT
+    double modifiedState[2];
+    #else
+    int modifiedState[2];
+    #endif
+
     /**
     * \brief Basic constructor.
     *
     * Attributes angle and velocity are set to 0.0.
     */
-    PendulumEnvironment(const std::vector<double>& actions) :
+    PendulumExecutionEnvironment(const std::vector<double>& actions) :
             availableActions(actions), currentStep(-1)
     {
 			currentState[0] = 0.0;
 			currentState[1] = 0.0;
+            modifiedState[0] = 0;
+			modifiedState[1] = 0;
 	};
 
     /// Getter for angle state.
@@ -84,6 +95,8 @@ public:
 
     /// Reset the environment.
     void reset(size_t seed = 0);
+
+    void reset(double initalAngle, double initialVelocity);
 
 	/**
 	* \brief Get the action from its associated ID.
@@ -106,12 +119,12 @@ public:
 
 };
 
-inline int PendulumEnvironment::getCurrentStep() const { return this->currentStep; }
+inline int PendulumExecutionEnvironment::getCurrentStep() const { return this->currentStep; }
 
 
 #ifdef PENDULUM_TRACE
-/// Print a PendulumEnvironment in a stream.
-std::ostream& operator<<(std::ostream& os, const PendulumEnvironment& pendulum);
+/// Print a PendulumExecutionEnvironment in a stream.
+std::ostream& operator<<(std::ostream& os, const PendulumExecutionEnvironment& pendulum);
 #endif
 
-#endif //PENDULUMENVIRONMENT_H
+#endif //PENDULUMLE_H

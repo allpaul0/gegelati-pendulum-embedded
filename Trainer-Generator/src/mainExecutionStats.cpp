@@ -5,7 +5,7 @@
 #include <gegelati.h>
 
 #include "instructions.h"
-#include "pendulumLE.h"
+#include "PendulumLearningEnvironment.h"
 
 #define DEFAULT_NB_ACTIONS 1000
 // #define VERBOSE
@@ -62,13 +62,12 @@ int main(int argc, char *argv[]) {
     fillInstructionSet(set);
     // Load parameters
     Learn::LearningParameters params;
-    File::ParametersParser::loadParametersFromJson(
-            PROJECT_ROOT_PATH "/params.json", params);
+    File::ParametersParser::loadParametersFromJson(PROJECT_ROOT_PATH "/params.json", params);
 
     /* Setup Pendulum environment and import graph */
 
     // Setup environment
-    Pendulum le({ 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 });
+    PendulumLearningEnvironment le({ 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 });
     le.reset(initalAngle, initialVelocity);
 
     // Load graph from dot file

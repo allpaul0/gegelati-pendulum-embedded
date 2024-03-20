@@ -73,18 +73,21 @@ end
 
 all_result_paths = []
 
-isResultDir(fullPath::String) = occursin(r"^.*_results$", fullPath)
+isInferenceResultDir(fullPath::String) = occursin(r"^.*\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$", fullPath)
 
 cd((@__DIR__) * "/../TPG") do 
 
-    tpgDirs = filter(isdir, readdir(join=true))     # Get all TPG subdirectories
+    tpgDirs = filter(isdir, readdir(join=true))  # Get all TPG subdirectories
 
-    for p in tpgDirs    # Get all results directories for all TPGs
+    for tpgDir in tpgDirs  # Get all results directories for all TPGs
 
-        readdir(p, join=true) |>
-            dirs -> filter(isResultDir, dirs) |>
-            resultDirs -> append!(all_result_paths, resultDirs)
+        inferenceDir = joinpath(tpgDir, "inference")  # Create path to inference directory within TPG directory
 
+        if isdir(inferenceDir)  # check if 'inference' directory exists
+            inferenceDirs = filter(isdir, readdir(inferenceDir, join=true))  # Get all directories within 'inference' directory
+            resultDirs = filter(isInferenceResultDir, inferenceDirs)  # Filter directories that match the inferenece result pattern (timestamp)
+            append!(all_result_paths, resultDirs)
+        end
     end
 
 end

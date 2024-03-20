@@ -28,14 +28,14 @@
 #include <cstdbool>
 #include <vector>
 #include <iostream>
-#include "PendulumEnvironment.h"
+#include "PendulumLearningEnvironment.h"
 #include "INA219Monitor.h"
 #include "INA219Bench.h"
 #include "PendulumINA219Monitor.h"
 #include "TimingBench.h"
 #include "ina219.h"
 extern "C" {
-	#include "pendulum_program.h"
+	#include <TPGprograms.h>
 }
 
 /* USER CODE END Includes */
@@ -75,7 +75,11 @@ const char logEnd[] = "##### Log End #####";
 
 uint32_t seed = 0;
 extern "C" {
-	extern double* in1;
+    #ifndef TYPE_INT
+    extern double* in1;
+    #else
+    extern int* in1;
+    #endif
 }
 
 
@@ -134,7 +138,7 @@ int main(void)
 	/* === Pendulum environment === */
 	std::vector<double> availableAction = {0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0};
 	PendulumEnvironment pendulum(availableAction);
-	in1 = pendulum.currentState;
+	in1 = pendulum.modifiedState;
 	pendulum_ptr = &pendulum;	// For benchmark
 
 

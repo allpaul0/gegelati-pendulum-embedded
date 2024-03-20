@@ -30,7 +30,7 @@
 #include <iostream>
 #include <unistd.h>
 
-#include "PendulumEnvironment.h"
+#include "PendulumExecutionEnvironment.h"
 
 #include "TimingBench.h"
 #include "INA219Bench.h"
@@ -57,7 +57,7 @@
 
 // === Pendulum global access and parameters === */
 
-PendulumEnvironment * pendulum_ptr;
+PendulumExecutionEnvironment* pendulum_ptr;
 uint16_t nbActions = 1000;	// Number of actions per inference
 double initAngle = 0.0;
 double initVelocity = 0.0;
@@ -126,9 +126,9 @@ int main(void)
 	MX_USART2_UART_Init();
 	/* USER CODE BEGIN 2 */
 
-	/* == Pendulum environment === */
+	/* == Pendulum Execution Environment === */
 	std::vector<double> availableAction = {0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0};
-	PendulumEnvironment pendulum(availableAction);
+	PendulumExecutionEnvironment pendulum(availableAction);
 	in1 = pendulum.currentState;
 	pendulum_ptr = &pendulum;
 
@@ -140,8 +140,10 @@ int main(void)
  */
 #ifdef TPG_SEED
   seed = TPG_SEED;
+  std::cout << "SEED is defined as:" << seed << std::endl;  // send (SYN) signal
 #else
   seed = HAL_GetTick();
+  std::cout << "SEED was undefined, its now:" << seed << std::endl;  // send (SYN) signal
  #endif
 
 	/* === INA219 setup === */
@@ -280,10 +282,7 @@ void energyBenchWrapper(void){
 
 void timingExecutionBenchWrapper(void){
 	// Pendulum setup time is negligible over inference execution time
-	pendulum_ptr->setAngle(initAngle);
-	pendulum_ptr->setVelocity(initVelocity);
-
-	pendulum_ptr->startInference((int)nbActions);
+	pendulum_ptr->reset(initAngle, initVelocity);
 }
 
 

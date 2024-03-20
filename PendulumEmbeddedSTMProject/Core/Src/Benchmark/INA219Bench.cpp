@@ -3,14 +3,14 @@
 #include "INA219Monitor.h"
 
 INA219Bench::INA219Bench(void (*fun)(void), INA219_t * ina219t, TIM_HandleTypeDef * tim,
-		TimeUnit timUnit, float timMultiplier, bool recordCurrent, bool recordPower)
-			: Bench(fun), destroyMonitor(true)
+	TimeUnit timUnit, float timMultiplier, bool recordCurrent, bool recordPower)
+	: Bench(fun), destroyMonitor(true)
 {
 	this->monitor = new INA219Monitor(ina219t, tim, timUnit, timMultiplier, recordCurrent, recordPower);
 }
 
 INA219Bench::INA219Bench(void (*fun)(void),  INA219Monitor * monitor)
-		: Bench(fun), monitor(monitor), destroyMonitor(false) {}
+	: Bench(fun), monitor(monitor), destroyMonitor(false) {}
 
 INA219Bench::~INA219Bench() {
 	if(this->destroyMonitor)

@@ -12,9 +12,11 @@ TPG/**
 
 # Measurements analysis complation and results files
 PastResults/
+perso/
 picocom.log
 *.o
 *.elf
+.project
 
 # Julia dependencies and project files
 *Project.toml
@@ -25,8 +27,7 @@ Trainer-Generator/bin
 */cmake-build-release
 */cmake-build-debug
 */.idea
-Trainer-Generator/to_train/*
-!Trainer-Generator/to_train/README.md
+Trainer-Generator/
 Trainer-Generator/params.json
 
 # Others

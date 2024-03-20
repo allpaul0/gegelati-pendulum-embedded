@@ -1,4 +1,4 @@
-#include "PendulumEnvironment.h"
+#include <PendulumExecutionEnvironment.h>
 
 #ifndef STM32
 #define _USE_MATH_DEFINES
@@ -18,54 +18,65 @@
 
 
 extern "C" {
-    #include "pendulum.h"
-    double* in1;    // Pointer shared with the TPG c code gen to access environment data
+    #include <TPGGraph.h>
+    // Pointer shared with the TPG c code gen to access environment data
+    #ifndef TYPE_INT
+    double* in1;
+    #else
+    int* in1;
+    #endif
 }
 
-const double PendulumEnvironment::MAX_SPEED = 8.0;
-const double PendulumEnvironment::MAX_TORQUE = 2.0;
-const double PendulumEnvironment::TIME_DELTA = 0.05;
-const double PendulumEnvironment::G = 9.81;
-const double PendulumEnvironment::MASS = 1.0;
-const double PendulumEnvironment::LENGTH = 1.0;
+const double PendulumExecutionEnvironment::MAX_SPEED = 8.0;
+const double PendulumExecutionEnvironment::MAX_TORQUE = 2.0;
+const double PendulumExecutionEnvironment::TIME_DELTA = 0.05;
+const double PendulumExecutionEnvironment::G = 9.81;
+const double PendulumExecutionEnvironment::MASS = 1.0;
+const double PendulumExecutionEnvironment::LENGTH = 1.0;
 
-double PendulumEnvironment::generateRandDouble(double min, double max){
+double PendulumExecutionEnvironment::generateRandDouble(double min, double max){
 	double r = (double)rand() / RAND_MAX;
 	return (r * (max - min)) + min;
 }
 
-void PendulumEnvironment::setAngle(double newValue) {
+void PendulumExecutionEnvironment::setAngle(double newValue) {
     this->currentState[0] = newValue;
+    this->modifiedState[0] = newValue * COEFF_DYNAMIC_OPPENING;
 }
 
-void PendulumEnvironment::setVelocity(double newValue) {
+void PendulumExecutionEnvironment::setVelocity(double newValue) {
     this->currentState[1] = newValue;
+    this->modifiedState[1] = newValue * COEFF_DYNAMIC_OPPENING;
 }
 
-double PendulumEnvironment::getAngle() const {
+double PendulumExecutionEnvironment::getAngle() const {
     return this->currentState[0];
 }
 
-double PendulumEnvironment::getVelocity() const {
+double PendulumExecutionEnvironment::getVelocity() const {
     return this->currentState[1];
 }
 
-void PendulumEnvironment::reset(size_t seed) {
+void PendulumExecutionEnvironment::reset(size_t seed) {
     srand(seed);
-
     setAngle(generateRandDouble(-M_PI, M_PI));
     setVelocity(generateRandDouble(-1.0, 1.0));
 }
 
-double PendulumEnvironment::getActionFromID(const uint64_t &actionID) {
+void PendulumExecutionEnvironment::reset(double initalAngle, double initialVelocity){
+    this->setAngle(initalAngle);
+    this->setVelocity(initialVelocity);
+}
+
+double PendulumExecutionEnvironment::getActionFromID(const uint64_t &actionID) {
     double result = (actionID == 0) ? 0.0 : this->availableActions.at((actionID - 1) % availableActions.size());
     return (actionID <= availableActions.size()) ? result : -result;
 }
 
-void PendulumEnvironment::doAction(uint64_t& actionID) {
+void PendulumExecutionEnvironment::doAction(uint64_t& actionID) {
     // Get the action
     double currentAction = getActionFromID(actionID);
-    currentAction *= PendulumEnvironment::MAX_TORQUE;
+    currentAction *= PendulumExecutionEnvironment::MAX_TORQUE;
 
     // Get current state
     double angle = this->getAngle();
@@ -85,7 +96,7 @@ void PendulumEnvironment::doAction(uint64_t& actionID) {
 }
 
 
-void PendulumEnvironment::startInference(int nbSteps){
+void PendulumExecutionEnvironment::startInference(int nbSteps){
 
 	for(int i = 0; i < nbSteps; i++){
 		this->currentStep = i;
@@ -102,7 +113,7 @@ void PendulumEnvironment::startInference(int nbSteps){
 
 
 #ifdef PENDULUM_TRACE
-std::ostream& operator<<(std::ostream& os, const PendulumEnvironment& pendulum){
+std::ostream& operator<<(std::ostream& os, const PendulumExecutionEnvironment& pendulum){
     return os << "Pendulum current state : { Angle = " << pendulum.getAngle() << ", Velocity = " << pendulum.getVelocity() << "}";
 }
 #endif

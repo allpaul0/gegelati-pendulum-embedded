@@ -58,7 +58,8 @@ public:
 	 * \param[in] recordCurrent true if the current must be recorded when calling record().
 	 * \param[in] recordPower true if the power must be recorded when calling record().
 	 */
-	INA219Monitor(INA219_t * ina219t, TIM_HandleTypeDef * tim = nullptr, TimeUnit timUnit = TimeUnit::None, float timMultiplier = 0.f, bool recordCurrent = true, bool recordPower = true);
+	INA219Monitor(INA219_t * ina219t, TIM_HandleTypeDef * tim = nullptr, TimeUnit timUnit = TimeUnit::None, 
+	float timMultiplier = 0.f, bool recordCurrent = true, bool recordPower = true);
 	
 	virtual ~INA219Monitor() {}
 

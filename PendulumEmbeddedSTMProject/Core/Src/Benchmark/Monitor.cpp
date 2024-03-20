@@ -3,7 +3,8 @@
 
 Monitor* Monitor::activeMonitor = nullptr;
 
-Monitor::Monitor(TIM_HandleTypeDef * tim, TimeUnit timUnit, float timMultiplier) : timer(tim), timerUnit(timUnit), timerMultiplier(timMultiplier) {}
+Monitor::Monitor(TIM_HandleTypeDef * tim, TimeUnit timUnit, float timMultiplier) 
+: timer(tim), timerUnit(timUnit), timerMultiplier(timMultiplier) {}
 
 void Monitor::makeActive(){
 

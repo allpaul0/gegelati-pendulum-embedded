@@ -1,8 +1,9 @@
 #include <PendulumINA219Monitor.h>
 #include <iostream>
 
-PendulumINA219Monitor::PendulumINA219Monitor(INA219_t * ina219t, PendulumEnvironment& env, TIM_HandleTypeDef * tim, TimeUnit timUnit, float timMultiplier)
-		: INA219Monitor(ina219t, tim, timUnit, timMultiplier), env(env) {}
+PendulumINA219Monitor::PendulumINA219Monitor(INA219_t * ina219t, PendulumExecutionEnvironment& env,
+	TIM_HandleTypeDef * tim, TimeUnit timUnit, float timMultiplier)
+	: INA219Monitor(ina219t, tim, timUnit, timMultiplier), env(env) {}
 
 void PendulumINA219Monitor::record() {
 
