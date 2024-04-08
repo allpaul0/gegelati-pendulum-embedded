@@ -28,7 +28,7 @@
 #include <cstdbool>
 #include <vector>
 #include <iostream>
-#include "PendulumLearningEnvironment.h"
+#include "PendulumExecutionEnvironment.h"
 #include "INA219Monitor.h"
 #include "INA219Bench.h"
 #include "PendulumINA219Monitor.h"
@@ -60,7 +60,7 @@ extern "C" {
 
 /* === Pendulum global access and parameters === */
 
-PendulumEnvironment * pendulum_ptr;
+PendulumExecutionEnvironment * pendulum_ptr;
 uint16_t nbActions = 1000;	// Number of actions per inference
 INA219Monitor * monitor_ptr;
 uint64_t actions[NB_ACTIONS];
@@ -137,7 +137,7 @@ int main(void)
 
 	/* === Pendulum environment === */
 	std::vector<double> availableAction = {0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0};
-	PendulumEnvironment pendulum(availableAction);
+	PendulumExecutionEnvironment pendulum(availableAction);
 	in1 = pendulum.modifiedState;
 	pendulum_ptr = &pendulum;	// For benchmark
 
@@ -161,13 +161,13 @@ int main(void)
 	TimingBench benchInference(inferenceBenchWrapper, &htim5, 15, TimeUnit::Milliseconds, 0.001f);
 
 	INA219Monitor timingRecordMonitor(&ina219t, &htim7);
-	timingRecordMonitor.flushWhenFull = false;
 	monitor_ptr = &timingRecordMonitor;
 	TimingBench benchINA219Monitor(energyMeasurementTimingBenchWrapper, &htim5, 100, TimeUnit::Microseconds, 1.f);
 
 
-	for(int i = 0; i < NB_ACTIONS; i++)	// Generate random actions for benchEvolution
+	for(int i = 0; i < NB_ACTIONS; i++){	// Generate random actions for benchEvolution
 		actions[i] = rand() % 15;
+	}
 	TimingBench benchEvolution(environmentEvolutionTimingBenchWrapper, &htim5, 15, TimeUnit::Milliseconds, 0.001f);
 
 	/* === INA219 Benchmark === */
@@ -297,12 +297,14 @@ void energyMeasurementTimingBenchWrapper(void){
 	monitor_ptr->record();
 }
 
+// Can be used to compute default cost of environment computation 
+// and latter deduced from the TPG inference 
 void environmentEvolutionTimingBenchWrapper(void){
 
 	seed = HAL_GetTick();
 	pendulum_ptr->reset(seed);
 	for(int i = 0; i < 20; i++){
-		for(int j = 0; j < NB_ACTIONS; j++){
+		for(int j = 0; j < NB_ACTIONS; j++){ //50 actions 
 			pendulum_ptr->doAction(actions[j]);
 		}
 	}

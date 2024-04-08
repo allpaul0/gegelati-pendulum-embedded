@@ -5,8 +5,8 @@
 #include "main.h"
 #include "TimeUnit.h"
 
-TimingBench::TimingBench(void (*fun)(void), TIM_HandleTypeDef * timer, int nbAttempts, TimeUnit unit, float unitMultiplier)
-	: Bench(fun), tim(timer), timerUnit(unit), timerMultiplier(unitMultiplier), nbAttempts(nbAttempts), result(-1)
+TimingBench::TimingBench(void (*fun)(void), TIM_HandleTypeDef * timer, TimeUnit unit, float unitMultiplier)
+	: Bench(fun), tim(timer), timerUnit(unit), timerMultiplier(unitMultiplier), result(-1)
 {
 	HAL_TIM_Base_Stop(timer);
 }
@@ -20,13 +20,15 @@ void TimingBench::startBench(){
 	this->attemptResults.clear();
 
 	for(int i = 0; i < this->nbAttempts; i++){
+		
+
 		// Reset counter and start timer
 		__HAL_TIM_SET_COUNTER(this->tim, (int32_t)(0x0));
 		HAL_TIM_Base_Start(this->tim);
 
 		(*this->benchFunction)();
 
-		HAL_TIM_Base_Stop(tim);
+		HAL_TIM_Base_Stop(this->tim);
 		uint32_t raw = (uint32_t)(__HAL_TIM_GET_COUNTER(this->tim));
 		int timing = (int)raw;
 		this->attemptResults.push_back(timing);

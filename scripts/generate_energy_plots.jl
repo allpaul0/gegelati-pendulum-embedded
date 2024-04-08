@@ -15,6 +15,7 @@ showPlot = false
     getOptionArgument(i::Integer)
 
 Return the argument of an option, with i the index of the option in ARGS. Exit program if there is no argument.
+Used to get the --show option
 """
 function getOptionArgument(i::Integer)
     if i+1 <= length(ARGS) && ARGS[i+1][1] != '-'

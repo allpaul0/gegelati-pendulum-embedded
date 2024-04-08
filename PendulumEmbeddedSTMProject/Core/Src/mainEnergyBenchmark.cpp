@@ -29,13 +29,15 @@
 #include <vector>
 #include <iostream>
 #include <unistd.h>
+#include <limits> 
 
 #include "PendulumExecutionEnvironment.h"
-
 #include "TimingBench.h"
-#include "INA219Bench.h"
+#include "PendulumINA219Bench.h"
 #include "PendulumINA219Monitor.h"
 #include "ina219.h"
+#include "TimeUnit.h"
+
 
 /* USER CODE END Includes */
 
@@ -57,23 +59,25 @@
 
 // === Pendulum global access and parameters === */
 
-PendulumExecutionEnvironment* pendulum_ptr;
+PendulumExecutionEnvironment* pendulumEE_ptr;
 uint16_t nbActions = 1000;	// Number of actions per inference
 double initAngle = 0.0;
 double initVelocity = 0.0;
 
 // === Measurements and log ===
-
 INA219_t ina219t;
 const char logStart[] = "##### Log Start #####";
 const char logEnd[] = "##### Log End #####";
-int timingNbAttempts = 10;  // Number of timing measurements used for timing average
 
 // === TPG ===
 
 uint32_t seed;  // Seed use to reset the PendulumEnvironment
 extern "C" {
-	extern double* in1;   // Pointer shared with the CodeGen files to access environment state
+	#ifndef TYPE_INT
+    extern double* in1; // Pointer shared with the CodeGen files to access environment state
+    #else
+    extern int* in1;
+    #endif  
 }
 
 
@@ -83,9 +87,8 @@ extern "C" {
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
-/* Benchmark function prototypes */
-void energyBenchWrapper(void);
-void timingExecutionBenchWrapper(void);
+/* Benchmark function prototype */
+void benchWrapper(void);
 
 /* USER CODE END PFP */
 
@@ -128,16 +131,16 @@ int main(void)
 
 	/* == Pendulum Execution Environment === */
 	std::vector<double> availableAction = {0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0};
-	PendulumExecutionEnvironment pendulum(availableAction);
-	in1 = pendulum.currentState;
-	pendulum_ptr = &pendulum;
+	PendulumExecutionEnvironment pendulumEE(availableAction);
+	in1 = pendulumEE.currentState;
+	pendulumEE_ptr = &pendulumEE;
 
-/* The seed to use for pendulum initialisation may be specified at compile time.
- * Through this #define, the computer used for compilation can set itself the
- * random seed for the initial state. This is a good way to do it because the board
- * will always start the program in almost the same conditions, so a call to
- * HAL_GetTick() here will always return the same value for the seed.
- */
+  /* The seed to use for pendulum initialisation may be specified at compile time.
+  * Through this #define, the computer used for compilation can set itself the
+  * random seed for the initial state. This is a good way to do it because the board
+  * will always start the program in almost the same conditions, so a call to
+  * HAL_GetTick() here will always return the same value for the seed.
+  */
 #ifdef TPG_SEED
   seed = TPG_SEED;
   std::cout << "SEED is defined as:" << seed << std::endl;  // send (SYN) signal
@@ -145,6 +148,11 @@ int main(void)
   seed = HAL_GetTick();
   std::cout << "SEED was undefined, its now:" << seed << std::endl;  // send (SYN) signal
  #endif
+
+  // Reset pendulum environment and store the initial conditions
+  pendulumEE.reset(seed);
+  initAngle = pendulumEE.getAngle();
+  initVelocity = pendulumEE.getVelocity();
 
 	/* === INA219 setup === */
 
@@ -162,13 +170,13 @@ int main(void)
 	// Timers are configure as follows :
 	// - TIM5, used for timing benches, count each microseconds.
 	// - TIM7, used for energy monitoring count each 0.1 milliseconds and raise an interrupt every 3 milliseconds.
+	PendulumINA219Bench energybench(benchWrapper, &ina219t, &pendulumEE, &htim7, TimeUnit::Milliseconds, 3.f); // current and power measure bench (provides cycle count to make sure the bench is fair)
+	TimingBench executionTimingBench(benchWrapper, &htim5, TimeUnit::Microseconds); // timing bench 
 
-	PendulumINA219Monitor pendulumMonitor(&ina219t, pendulum, &htim7, TimeUnit::Milliseconds, 3.f);
-	INA219Bench energybench(energyBenchWrapper, &pendulumMonitor);
+	Cortex_M4_InitCycleCounter(); /* enable DWT hardware */
+	Cortex_M4_EnableCycleCounter(); /* start counting */
 
-	TimingBench executionTimingBench(timingExecutionBenchWrapper, &htim5, timingNbAttempts, TimeUnit::Microseconds);
-
-  char buffStart;
+	char buffStart;
 
   /* USER CODE END 2 */
 
@@ -180,48 +188,39 @@ int main(void)
     //synchronization with PC
 		do {
 		  std::cout << "START" << std::endl;  // send (SYN) signal
-			std::cout << "Seed STM32 : " << seed << std::endl;
-			read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
+		  std::cout << "Seed STM32 : " << seed << std::endl;
+		  read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
 		  HAL_Delay(1000);  // wait for 1 second
 		}
 		while (buffStart != '\n'); // (ACK) signal is a newline character
 
-    // Reset pendulum environment and store the initial conditions
-    pendulum.reset(seed);
-    initAngle = pendulum.getAngle();
-    initVelocity = pendulum.getVelocity();
-
     /* Energy consumption measurements */
-
     std::cout << "Starting energy bench" << std::endl;
-
     std::cout << logStart << std::endl;
     energybench.startBench();
+    energybench.printResult();
     std::cout << logEnd << std::endl;
-
     std::cout << "Exiting energy bench" << std::endl;
 
-
     /* Execution time measurement without energy measurement interruptions */
-
     std::cout << "Starting inference execution time bench" << std::endl;
-
-    executionTimingBench.startBench();
     std::cout << logStart << std::endl;
+    executionTimingBench.startBench();
     executionTimingBench.printResult();
     std::cout << logEnd << std::endl;
-
-
     std::cout << "Exiting inference execution time bench" << std::endl;
-
-
+  
     std::cout << "END" << std::endl;
+	  Cortex_M4_DisableCycleCounter(); /* disable counting if not used any more */
+
     while(1) {}		// Waiting for reset
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 	}
+
+
   /* USER CODE END 3 */
 }
 
@@ -275,16 +274,11 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 /* Function for benchmarks */
-
-void energyBenchWrapper(void){
-	pendulum_ptr->startInference((int)nbActions);
+void benchWrapper(void){
+  // set similar starting conditions as Energy consumption measurements
+  pendulumEE_ptr->reset(initAngle, initVelocity);
+	pendulumEE_ptr->startInference((int)nbActions);
 }
-
-void timingExecutionBenchWrapper(void){
-	// Pendulum setup time is negligible over inference execution time
-	pendulum_ptr->reset(initAngle, initVelocity);
-}
-
 
 /* USER CODE END 4 */
 

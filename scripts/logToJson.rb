@@ -22,6 +22,7 @@ def logToJson(logPath, jsonPath, seed=nil)
     paramLine = /dataTimeUnit : (#{textRegex})\tdataTimerMultiplier : (#{floatRegex})\tStartAngle : (#{floatRegex})\tStartVelocity : (#{floatRegex})/
     headerLine = /Step\tCurrent\tPower/
     executionTimingLine = /\=\=\= T_(#{textRegex}) : (#{floatRegex}) (#{textRegex})/
+    cyclesLine= /\=\=\= C_(#{textRegex}) : (#{floatRegex})(( #{textRegex})|%)/
 
 
     jsonHash = {"metadata" => {}, "summary" => {}, "step" => [], "current" => [], "power" => [] }
@@ -52,6 +53,11 @@ def logToJson(logPath, jsonPath, seed=nil)
                 jsonHash["step"] << $1.to_i
                 jsonHash["current"] << $2.to_f
                 jsonHash["power"] << $3.to_f
+            when cyclesLine
+                variable_name = $1
+                value = $2
+                unit = $3
+                jsonHash["summary"]["#{variable_name}"] = "#{value}#{unit}"
             when executionTimingLine
                 timing_name = $1
                 value = $2

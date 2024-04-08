@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
      * The executionStats.json file is generated in the same directory as the .dot file.
      */
 
-    std::cout << "\033[1;33m=====[ Execution statistics target ]=====\033[0m" << std::endl;
+    //std::cout << "\033[1;33m=====[ Execution statistics target ]=====\033[0m" << std::endl;
     /* Checking arguments */
 
     if(argc < 4){
@@ -71,18 +71,18 @@ int main(int argc, char *argv[]) {
     le.reset(initalAngle, initialVelocity);
 
     // Load graph from dot file
-    Environment dotEnv(set, le.getDataSources(), params.nbRegisters, params.nbProgramConstant);
-    TPG::TPGGraph dotGraph(dotEnv, std::make_unique<TPG::TPGInstrumentedFactory>());
-    File::TPGGraphDotImporter dot(dotPath.c_str(), dotEnv, dotGraph);
-    dot.importGraph();
+    Environment env(set, le.getDataSources(), params.nbRegisters, params.nbProgramConstant);
+    TPG::TPGGraph tpgGraph(env, std::make_unique<TPG::TPGInstrumentedFactory>());
+    File::TPGGraphDotImporter tpgGraphDotImporter(dotPath.c_str(), env, tpgGraph);
+    tpgGraphDotImporter.importGraph();
 
     // Prepare for inference
-    TPG::TPGExecutionEngineInstrumented tee(dotEnv);
-    const TPG::TPGVertex* root(dotGraph.getRootVertices().back());
+    TPG::TPGExecutionEngineInstrumented tee(env);
+    const TPG::TPGVertex* root(tpgGraph.getRootVertices().back());
 
     /* TPG Inference */
 
-    std::cout << "Start TPG inference with initial parameter {Angle : " << initalAngle <<", Velocity : " << initialVelocity << "}" << std::endl;
+    std::cout << "\tInitial parameter {Angle : " << initalAngle <<", Velocity : " << initialVelocity << "}" << std::endl;
 
     bool wasTerminal = false;
     for(int i = 0; i < nbActions; i++){
@@ -97,21 +97,24 @@ int main(int argc, char *argv[]) {
 #endif
 
         if(!wasTerminal && le.isTerminal()){
-            std::cout << "Pendulum reached terminal state at step " << i+1 << std::endl;
+            std::cout << "\tPendulum reached terminal state at step " << i+1 << std::endl;
             wasTerminal = true;
         }
 
     }
+    if (!le.isTerminal()){
+        std::cout << "\tPendulum did not reach terminal state" << std::endl;
+    }
 
     /* Execution statistics extraction and export */
 
-    std::cout << "Exporting execution statistics" << std::endl;
+    //std::cout << "Exporting execution statistics" << std::endl;
 
     TPG::ExecutionStats executionStats;
-    executionStats.analyzeExecution(tee, &dotGraph);
-    executionStats.writeStatsToJson( (dotPath.parent_path().string() + "/executionStats.json").c_str() );
+    executionStats.analyzeExecution(tee, &tpgGraph);
+    executionStats.writeStatsToJson((dotPath.parent_path().string() + "/executionStats.json").c_str());
 
-    std::cout << "End program" << std::endl;
+    //std::cout << "End program" << std::endl;
 
     return 0;
 }

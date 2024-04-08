@@ -37,8 +37,6 @@ public:
 	/// Starts bench
 	virtual void startBench() = 0;
 
-	/// Set the function to benchmark.
-	void setBenchFunction(void (*fun)(void));
 };
 
 #endif /* SRC_BENCHMARK_BENCH_H_ */

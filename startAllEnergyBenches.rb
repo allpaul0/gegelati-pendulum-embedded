@@ -33,6 +33,9 @@ resultDirPrefix = Time.now.strftime("%Y-%m-%d_%H-%M-%S")
 # Only used if sameSeed parameter is true
 common_seed = rand(C_UINT_MAX)
 
+#will display information about compilation, execution, ...
+verbose = false
+
 # ===============================
 
 
@@ -51,8 +54,12 @@ def getValidDirectories (dir, requiredFiles)
             if File.directory? tpgDirName
 
                 # Condition return the first missing file, otherwise nil is returned
-                if requiredFiles.find { |f| not File.exist? "#{tpgDirName}/#{f}" }.nil?
+                missing_file = requiredFiles.find { |f| not File.exist? "#{tpgDirName}/#{f}" }
+                
+                if missing_file.nil?
                     valid_TPG_directories << tpgDirName
+                else
+                    puts "Missing file in #{tpgDirName}: #{missing_file}"
                 end
 
             end
@@ -66,7 +73,7 @@ end
 
 # Exit the script with an error message if the last call to a subprocess returns an exit code different from 0
 def checkExitstatus(error_message)
-    if $?.exitstatus != 0
+    if  $?.nil? || $?.exitstatus != 0
         puts "Exit point: #{error_message}"
         exit 1
     end
@@ -118,6 +125,10 @@ OptionParser.new{ |parser|
         puts parser
         exit
     }
+
+    parser.on("-v", "verbose"){
+        verbose = true;
+    }
     
 }.parse!
 
@@ -132,7 +143,7 @@ if stages["CodeGen"]
     
     puts "\033[1;32m=====[ CodeGen stage ]=====\033[0m"
 
-    system("./scripts/generate_TPG.rb")
+    system("./scripts/generate_TPG.rb #{verbose}")
     checkExitstatus("generate TPG")
 
 end
@@ -155,6 +166,19 @@ if stages["Measures"]
         puts "Valid TPG subdirectories are #{valid_TPG_directories}"
     end
 
+    # Add ARM g++ compiler to the path if not set yet
+    # Passing the compiler to the PATH is necessary for reproducing the build from STM32CubeIDE
+    # Otherwise, we get "arm-none-eabi-g++: error: unrecognized command-line option '-fcyclomatic-complexity'"
+
+    new_path = "/opt/st/stm32cubeide_1.13.2/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.11.3.rel1.linux64_1.1.1.202309131626/tools/bin"
+    existing_path = ENV["PATH"] || ""
+
+    # Check if the new path is already included in the PATH variable
+    unless existing_path.split(File::PATH_SEPARATOR).include?(new_path)
+    # Add the new path before the existing PATH variable
+    ENV["PATH"] = "#{new_path}#{File::PATH_SEPARATOR}#{existing_path}"
+    end
+
     # Compiling, flashing on STM32, do inference and analyse results for each TPG
 
     currentAvgs = {}
@@ -162,11 +186,14 @@ if stages["Measures"]
     executionTimeAvgs = {}
     timeUnits = {}
     totalEnergyConsumption = {}
+    ratioInterruptCompute = {}
 
-
+    
     valid_TPG_directories.each { |tpgDirName|
 
-          # === Moving file for cross-compilation ===
+        puts "\033[1;33m#{tpgDirName}\033[0m"
+
+        # === Moving file for cross-compilation ===
 
         # Source files
         dest = "PendulumEmbeddedSTMProject/Core/Src/Pendulum"
@@ -174,6 +201,7 @@ if stages["Measures"]
             
             src = "#{tpgDirName}/CodeGen/#{f}"
             FileUtils.cp(src, dest)
+            checkExitstatus("cp src dest Measures")
         }
 
         # Header files
@@ -182,28 +210,36 @@ if stages["Measures"]
 
             src = "#{tpgDirName}/CodeGen/#{f}"
             FileUtils.cp(src, dest)
+            checkExitstatus("cp src dest Measures")
         }
 
         # === Compiling executable ===
 
         seed = sameSeed ? common_seed : rand(C_UINT_MAX)
 
-        puts "\033[1;32m=====[ Compilation of the embedded binary ]=====\033[0m"
+        #puts "\033[1;32m\t- Compilation of the embedded binary\033[0m"
+        puts "\tCompilation of the embedded binary"
 
-        # equivalent bash command
-        # PATH=/opt/st/stm32cubeide_1.13.2/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.11.3.rel1.linux64_1.1.1.202309131626/tools/bin:$PATH
-        # Otherwise, arm-none-eabi-g++: error: unrecognized command-line option '-fcyclomatic-complexity'
-        # make clean -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench
-        # make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench
-        # -j20 = 20 jobs; passing the compiler to the PATH is necessary for reproducing the build from STM32CubeIDE
+        # Usefull compilation bash commands
+        # make clean -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench //clean repo
+        # make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench //build repo
+        # -j20 = 20 jobs; 
     
         # No matter the TPG, the program on the STM32 will always initialise itself the same way and its random number generator too.
         # We want the TPGs to have a random initial state, so the seed used to initialise it is geerated via this ruby script.
+        
+        embedded_binary_compilation_string = "make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench TPG_SEED=#{seed}"
+      
         if tpgDirName.include?("int")
-            system("make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench TPG_SEED=0 TYPE_INT=1")
-        else
-            system("make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench TPG_SEED=#{seed}")
+            embedded_binary_compilation_string += " TYPE_INT=1"
         end
+
+        if(!verbose)
+            embedded_binary_compilation_string += " > /dev/null 2>&1"
+        end
+
+        system(embedded_binary_compilation_string)
+
         checkExitstatus("make all -C CodeGen")
     
         # Moving .elf binary to the current TPG subdirectory
@@ -214,15 +250,22 @@ if stages["Measures"]
     
         # === Loading program on STM32 flash memory ===
 
-        puts "\033[1;32m=====[ Loading the binary ]=====\033[0m"
+        #puts "\033[1;32m\t- Loading the binary\033[0m"
+        puts "\tLoading the binary"
 
         # Loading is done using the program STM32_Programer_CLI
-     
-        system("STM32_Programmer_CLI -c port=SWD -w #{destElf}/PendulumEmbeddedSTMProject.elf -rst") # c: connect | rst: reset system
+        embedded_binary_loading_string = "STM32_Programmer_CLI -c port=SWD -w #{destElf}/PendulumEmbeddedSTMProject.elf -rst"
+        if(!verbose)
+            embedded_binary_loading_string += " > /dev/null 2>&1"
+        end
+        system(embedded_binary_loading_string) # c: connect | rst: reset system
         checkExitstatus("STM32_Programmer_CLI")
     
-    
+
         # === Start serial interface and inference ===
+
+        #puts "\033[1;32m\t- Inference on the board\033[0m"
+        puts "\tInference on the board"
 
         # Create subdirectory to save results
         inferencePath = "#{tpgDirName}/inference"
@@ -250,7 +293,9 @@ if stages["Measures"]
                 while continue
                     line = serialport.readline
         
-                    puts line
+                    if(verbose)
+                        puts line   
+                    end
                     logFile << line
         
                     continue = (line != "END\r\n")
@@ -281,6 +326,7 @@ if stages["Measures"]
         powerAvgs[tpgDirName] = dataJson["summary"]["averagePower"]
         executionTimeAvgs[tpgDirName] = dataJson["summary"]["executionTavg"]
         totalEnergyConsumption[tpgDirName] = dataJson["summary"]["totalEnergy"]
+        ratioInterruptCompute[tpgDirName] = dataJson["summary"]["ratioInterruptCompute"]
     }
 
 
@@ -290,11 +336,13 @@ if stages["Measures"]
     puts "\033[1;36m=====[ Results summary ]=====\033[0m"
 
     valid_TPG_directories.sort!.each { |tpgDirName|
-        puts "#{tpgDirName}"
+        #puts "#{tpgDirName}"
+        puts "\033[1;33m#{tpgDirName}\033[0m"
         puts "\tAverage current : #{(currentAvgs[tpgDirName] * 1000).round(4)} mA"
         puts "\tAverage power : #{powerAvgs[tpgDirName].round(4)} W"
         puts "\tAverage step execution time : #{executionTimeAvgs[tpgDirName]}"
         puts "\tTotal energy consumption : #{(totalEnergyConsumption[tpgDirName] * 1000).round(4)} mJ"
+        puts "\tRatio Measure/Compute : #{ratioInterruptCompute[tpgDirName]}"
     }
 
 end
@@ -311,19 +359,25 @@ if stages["Analysis"]
         .filter { |d| not File.exist? "#{d}/executionStats.json" }  # if the file executionStats.json exists, the processing has already been done in the past  
         .filter { |d| File.exist? "#{d}/energy_data.json" }  # make sure the file energy_data.json exists
         .each { |d|
+
+            match = d.match(/TPG\/(.*?)\/inference/)
+            directory = "TPG/" + match[1] if match
             
-            codeGenPath = "#{d}/../../CodeGen"
             srcPath = "#{d}/../../src"
             trainingPath= "#{d}/../../training"
 
             # Copying required files for generating Executions stats
-            puts "#{srcPath}/instructions.cpp"
+            puts "\033[1;33m#{directory}\033[0m"
             FileUtils.cp("#{srcPath}/instructions.cpp", "Trainer-Generator/src")
             FileUtils.cp("#{srcPath}/params.json", "Trainer-Generator")
             checkExitstatus("cp src dest ExecutionStats")
             
             # CMake ExecutionStats target compilation
-            system("cmake --build Trainer-Generator/bin --target ExecutionStats")
+            execution_stats_compilation_string = "cmake --build Trainer-Generator/bin --target ExecutionStats"
+            if(!verbose)
+                execution_stats_compilation_string += " > /dev/null 2>&1"
+            end
+            system(execution_stats_compilation_string)
             checkExitstatus("cmake ExecutionStats")
 
             # Get initial values from results of the energy bench
@@ -331,6 +385,7 @@ if stages["Analysis"]
             File.open("#{d}/energy_data.json") { |io| energyData = JSON.load(io) }
             
             # Start replay and execution stats export for 1000 inferences
+
             system("./Trainer-Generator/bin/Release/ExecutionStats #{trainingPath}/out_best.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
             checkExitstatus("./ExecutionStats")
 

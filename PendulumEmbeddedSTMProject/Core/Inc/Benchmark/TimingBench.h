@@ -27,8 +27,8 @@ class TimingBench : public Bench {
 
 	/* === Results == */
 
-	/// Number of timing tests used for timing average.
-	int nbAttempts;
+	// number of timing measures to do before computing timing average.
+	int nbAttempts = 5;
 
 	/// Raw timing results for each attempts.
 	std::vector<int> attemptResults;
@@ -48,11 +48,10 @@ public:
 	 *
 	 * \param[in] fun: pointer to the bench function.
 	 * \param[out] timer: TIM_HandleTypeDef * of the timer used.
-	 * \param[in] nbAttempts: number of timing measures to do before computing timing average.
 	 * \param[in] unit: TimeUnit corresponding to the timer tick.
 	 * \param[in] unitMultiplier: unit multiplier corresponding to the timer tick.
 	 */
-	TimingBench(void (*fun)(void), TIM_HandleTypeDef * timer, int nbAttempts = 5, TimeUnit unit = TimeUnit::Milliseconds, float unitMultiplier = 1.f);
+	TimingBench(void (*fun)(void), TIM_HandleTypeDef * timer, TimeUnit unit = TimeUnit::Milliseconds, float unitMultiplier = 1.f);
 
 	virtual ~TimingBench() {};
 

@@ -10,16 +10,18 @@ void Monitor::makeActive(){
 
 	// Stop timer doing auto measurement for old active monitor
 	// An activeMonitor always has a timer
-	if(Monitor::activeMonitor != nullptr)
+	if(Monitor::activeMonitor != nullptr){
 		HAL_TIM_Base_Stop_IT(Monitor::activeMonitor->timer);
+	}
 
 	if(this->timer != nullptr){
 		Monitor::activeMonitor = this;
 		// Start timer for auto measurement
 		HAL_TIM_Base_Start_IT(this->timer);
 	}
-	else
-	 Monitor::activeMonitor = nullptr;
+	else{
+		Monitor::activeMonitor = nullptr;
+	}
 
 }
 
@@ -31,10 +33,7 @@ void Monitor::noActiveMonitor(){
 }
 
 
-
 void recordActiveMonitor(){
-
 	if(Monitor::activeMonitor != nullptr)
 		Monitor::activeMonitor->record();
-
 }

@@ -1,5 +1,5 @@
-#ifndef PENDULUM_EMBEDDED_LE_H
-#define PENDULUM_EMBEDDED_LE_H
+#ifndef PENDULUM_EXECUTION_ENVIRONMENT_H
+#define PENDULUM_EXECUTION_ENVIRONMENT_H
 
 #include <vector>
 #include <cstdint>
@@ -19,7 +19,7 @@
  * GEGELATI lib. Neither does it uses any of its functions. 
  * It only keeps  the pendulum simulation part and use a CodeGen TPG to
  * do action inferences. It is aimed towards Embedded systems inference.
- * CodeGen files (TPGGraph.h/.c and TPGPrograms.h/.c) are thus required
+ * CodeGen files (TPGGraph.h/.c and TPGprograms.h/.c) are thus required
  * for this environment.
  */
 class PendulumExecutionEnvironment {

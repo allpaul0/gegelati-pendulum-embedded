@@ -25,8 +25,13 @@ int main() {
     // Learning environment
     PendulumLearningEnvironment pendulumLE({ 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 });
     // Learning agent
-    size_t seed = time(nullptr);
-    Learn::ParallelLearningAgent la(pendulumLE, instructionSet, params);
+    size_t seed = 0; // = time(nullptr);
+    const TPG::TPGFactory& TPGInstrumentedFactory = TPG::TPGInstrumentedFactory();
+    Learn::ParallelLearningAgent la(pendulumLE, instructionSet, params, TPGInstrumentedFactory);
+
+    std::shared_ptr<TPG::TPGGraph> tpg1 = la.getTPGGraph();
+
+    //Learn::ParallelLearningAgent la(pendulumLE, instructionSet, params);
     la.init(seed);
 
     /* Training message*/
@@ -63,12 +68,32 @@ int main() {
 
     std::cout << "End training, generating data on best policy" << std::endl;
 
-    // Remove all root except the best one
-    la.keepBestPolicy();
-    // Remove all introns from the TPG
-    la.getTPGGraph()->clearProgramIntrons();
+    // Clean unused vertices and teams (clean Hitchhickers)
+    std::shared_ptr<TPG::TPGGraph> tpg = la.getTPGGraph();
 
-    // Export the final graph
+    //check if the factory is of type TPGInstrumentedFactory
+    /*
+    auto tpgFactory = tpg->getFactory();
+    if (typeid(tpgFactory) == typeid(TPG::TPGFactory)) {
+        std::cout << "TPG::TPGFactory" << std::endl;
+
+    }else if(typeid(tpgFactory) == typeid(TPG::TPGInstrumentedFactory)){
+        std::cout << "TPG::TPGInstrumentedFactory" << std::endl;
+        
+    }else {
+        std::cout << "else" << std::endl;
+    }
+    */
+
+    TPG::TPGInstrumentedFactory().clearUnusedTPGGraphElements(*tpg);
+
+    // Keep only the best root
+    la.keepBestPolicy();
+
+    // Clean introns from the TPG
+    tpg->clearProgramIntrons();
+
+    // Print the resulting TPG
     dotExporter.setNewFilePath(RESULT_EXPORT_PATH "/out_best.dot");
     dotExporter.print();
 

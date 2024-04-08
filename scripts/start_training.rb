@@ -12,12 +12,13 @@ def check_exit_status(code)
     end
 end
   
-  # move from the current dir to Trainer-Generator
+  # move from the current dir to Trainer-Generator 
+  #Trainer-Generator is used for training the TPGs on a Learning Environment
   script_dir = File.expand_path(File.dirname(__FILE__))
   Dir.chdir(File.join(script_dir, '..'))
   check_exit_status($?.to_i)
   
-  # CMake configuration
+  # Trainer-Generator CMake configuration 
   FileUtils.rm_r('Trainer-Generator/bin')
   check_exit_status($?.to_i)
   FileUtils.mkdir('Trainer-Generator/bin')
@@ -30,31 +31,28 @@ end
   check_exit_status($?.to_i)
 
 
-  # Get a list of directories to train, removing those with a subdirectory named "training"
+  # Get a list of different directories to train, removing those with a subdirectory named "training"
   dirs = Dir.entries('TPG')
-  puts("dirs1" )
-  puts(dirs)
 
+  # reject theses entries from the list
   dirs = dirs.reject do |d|
     d == '.' || d == '..' || d == 'README.md'
   end
-  puts("dirs2" )
-  puts(dirs)
 
+  # reject already trained dirs
   dirs = dirs.reject do |d|
     if File.directory?(File.join('TPG', d, 'training'))
-      puts "Directory #{d} already trained"
+      puts "\033[0;93mDirectory #{d} already trained.\033[0m"
       true
     end
   end
 
-  puts("dirs3" )
-  puts(dirs)
-
+  # train the different dirs
   dirs.each do |d|
     # ... copy the necessary files and start the training
     # folder name can cause encoding problems during cp 
-    puts("TPG/#{d}/src/instructions.cpp")
+    puts "\033[0;94mTraining directory #{d}\033[0m"
+
     system("cp TPG/#{d}/src/instructions.cpp Trainer-Generator/src/")
     check_exit_status($?.to_i)
     system("cp TPG/#{d}/src/params.json Trainer-Generator/")
@@ -74,7 +72,7 @@ end
           # Specify that we are training on int data type
           # the data needs to be scaled accordingly
           system('./Trainer TYPE_INT=1')
-          puts "int"
+          puts "int directory"
         else
           system('./Trainer')
         end

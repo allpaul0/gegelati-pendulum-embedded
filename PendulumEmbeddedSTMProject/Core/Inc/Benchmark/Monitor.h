@@ -24,19 +24,17 @@ class Monitor {
 	/// Monitor used with global callback.
 	static Monitor * activeMonitor;
 
-
+protected:
 	/* === Timer === */
 
 	/// Associated timer when used as activeMonitor.
 	TIM_HandleTypeDef * timer;
 
-protected:
 	/// Timer period unit (Seconds, Milliseconds or Microseconds).
 	TimeUnit timerUnit;
 
 	/// Unit multiplier for one timer period.
 	float timerMultiplier;
-
 
 	friend void recordActiveMonitor();
 
@@ -63,7 +61,6 @@ public:
     virtual void record() = 0;
 
 
-
     /**
      * \brief Set this Monitor as the activeMonitor and starts auto measurement using its associated timer.
      * 
@@ -73,7 +70,6 @@ public:
 
     /// Set the activeMonitor to nullptr.
     static void noActiveMonitor();
-
 
 };
 
