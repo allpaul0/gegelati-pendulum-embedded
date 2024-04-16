@@ -75,10 +75,10 @@ const char logEnd[] = "##### Log End #####";
 
 uint32_t seed = 0;
 extern "C" {
-    #ifndef TYPE_INT
-    extern double* in1;
+	#if TYPE_INT == 1
+	extern int* in1;
     #else
-    extern int* in1;
+	extern double* in1;
     #endif
 }
 

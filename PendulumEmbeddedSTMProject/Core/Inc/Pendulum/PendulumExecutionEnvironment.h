@@ -64,10 +64,10 @@ public:
     /// This must be public to be exposed to the inference program.
     double currentState[2];
 
-    #ifndef TYPE_INT
-    double modifiedState[2];
-    #else
+    #if TYPE_INT == 1
     int modifiedState[2];
+    #else
+    double modifiedState[2];
     #endif
 
     /**

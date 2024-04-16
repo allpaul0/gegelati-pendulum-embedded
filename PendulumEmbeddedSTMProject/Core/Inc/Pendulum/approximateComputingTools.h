@@ -15,9 +15,9 @@
 #include <stddef.h>
 #include <inttypes.h>
 
-#ifndef TYPE_INT
+#if TYPE_INT == 1
 // allows to work on thin grain even on integer data type by scaling the dynamic 
-#define COEFF_DYNAMIC_OPPENING 1000; 
+#define COEFF_DYNAMIC_OPPENING 1000;
 #else
 #define COEFF_DYNAMIC_OPPENING 1;
 #endif

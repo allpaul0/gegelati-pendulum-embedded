@@ -19,11 +19,11 @@
 
 extern "C" {
     #include <TPGGraph.h>
-    // Pointer shared with the TPG c code gen to access environment data
-    #ifndef TYPE_INT
-    double* in1;
-    #else
+    // Pointer shared with the TPG C CodeGen to access environment data
+    #if TYPE_INT == 1
     int* in1;
+    #else
+    double* in1;
     #endif
 }
 

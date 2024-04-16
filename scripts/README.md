@@ -3,10 +3,10 @@
 Use of these scripts is automated by the `startAllEnergyBenches.rb` script.
 
 
-## `start_training.sh`
+## `start_training.rb`
 Start TPG trainings with the Trainer-Genrator project (read corresponding README.md for more instructions).
 
-## `generate_TPG.sh`
+## `start_generation.rb`
 Generate CodeGen files for every TPGs in TPG/ directory.
 
 ## `create_plots.jl`

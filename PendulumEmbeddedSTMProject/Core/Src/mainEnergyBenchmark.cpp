@@ -71,15 +71,22 @@ const char logEnd[] = "##### Log End #####";
 
 // === TPG ===
 
-uint32_t seed;  // Seed use to reset the PendulumEnvironment
+uint32_t seed = 0;  // Seed use to reset the PendulumEnvironment
 extern "C" {
-	#ifndef TYPE_INT
-    extern double* in1; // Pointer shared with the CodeGen files to access environment state
-    #else
-    extern int* in1;
-    #endif  
+	#if TYPE_INT == 1
+	extern int* in1;
+  #else
+	extern double* in1;
+  #endif
 }
 
+
+//#define DO_EXPAND(VAL)  VAL ## 1
+//#define EXPAND(VAL)     DO_EXPAND(VAL)
+
+//#if !defined(CPPFLAGS) || (EXPAND(CPPFLAGS) == 1)
+//    #error "Only here if CPPFLAGS is not defined OR CPPFLAGS is the empty string."
+//#endif
 
 /* USER CODE END PV */
 
@@ -132,27 +139,31 @@ int main(void)
 	/* == Pendulum Execution Environment === */
 	std::vector<double> availableAction = {0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0};
 	PendulumExecutionEnvironment pendulumEE(availableAction);
-	in1 = pendulumEE.currentState;
+	in1 = pendulumEE.modifiedState;
 	pendulumEE_ptr = &pendulumEE;
 
-  /* The seed to use for pendulum initialisation may be specified at compile time.
-  * Through this #define, the computer used for compilation can set itself the
-  * random seed for the initial state. This is a good way to do it because the board
-  * will always start the program in almost the same conditions, so a call to
-  * HAL_GetTick() here will always return the same value for the seed.
-  */
-#ifdef TPG_SEED
-  seed = TPG_SEED;
-  std::cout << "SEED is defined as:" << seed << std::endl;  // send (SYN) signal
-#else
-  seed = HAL_GetTick();
-  std::cout << "SEED was undefined, its now:" << seed << std::endl;  // send (SYN) signal
- #endif
+ 	std::cout << "START" << std::endl;  // send (SYN) signal
 
-  // Reset pendulum environment and store the initial conditions
-  pendulumEE.reset(seed);
-  initAngle = pendulumEE.getAngle();
-  initVelocity = pendulumEE.getVelocity();
+#ifdef TPG_SEED
+	seed = TPG_SEED;
+	std::cout << "SEED is defined as:" << seed << std::endl;
+#endif
+
+	int coeff = COEFF_DYNAMIC_OPPENING;
+
+#if TYPE_INT == 1
+    std::cout << "TYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
+#else
+    std::cout << "TYPE_INT, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
+#endif
+
+
+
+
+	// Reset pendulum environment and store the initial conditions
+	pendulumEE.reset(seed);
+	initAngle = pendulumEE.getAngle();
+	initVelocity = pendulumEE.getVelocity();
 
 	/* === INA219 setup === */
 
@@ -187,12 +198,15 @@ int main(void)
 
     //synchronization with PC
 		do {
-		  std::cout << "START" << std::endl;  // send (SYN) signal
+
 		  std::cout << "Seed STM32 : " << seed << std::endl;
+      //std::cout << "\tInitial parameter {Angle : " << initAngle
+      //          << ", Velocity : " << initVelocity << "}" << std::endl;
 		  read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
 		  HAL_Delay(1000);  // wait for 1 second
 		}
 		while (buffStart != '\n'); // (ACK) signal is a newline character
+
 
     /* Energy consumption measurements */
     std::cout << "Starting energy bench" << std::endl;

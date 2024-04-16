@@ -31,6 +31,12 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+#if TYPE_INT == 1
+    std::cout << "\tTYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
+#else
+    std::cout << "\tTYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
+#endif
+
     double initalAngle;
     double initialVelocity;
     std::filesystem::path dotPath(argv[1]);
@@ -67,12 +73,12 @@ int main(int argc, char *argv[]) {
     /* Setup Pendulum environment and import graph */
 
     // Setup environment
-    PendulumLearningEnvironment le({ 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 });
-    le.reset(initalAngle, initialVelocity);
+    PendulumLearningEnvironment pendulumLE({ 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 });
+    pendulumLE.reset(initalAngle, initialVelocity);
 
     // Load graph from dot file
-    Environment env(set, le.getDataSources(), params.nbRegisters, params.nbProgramConstant);
-    TPG::TPGGraph tpgGraph(env, std::make_unique<TPG::TPGInstrumentedFactory>());
+    Environment env(set, pendulumLE.getDataSources(), params.nbRegisters, params.nbProgramConstant);
+    TPG::TPGGraph tpgGraph(env, std::make_unique<TPG::TPGFactoryInstrumented>());
     File::TPGGraphDotImporter tpgGraphDotImporter(dotPath.c_str(), env, tpgGraph);
     tpgGraphDotImporter.importGraph();
 
@@ -89,21 +95,20 @@ int main(int argc, char *argv[]) {
 
         auto trace = tee.executeFromRoot(*root);
         uint64_t action = ((const TPG::TPGAction*)trace.back())->getActionID();
-
-        le.doAction(action);
+        pendulumLE.doAction(action);
 
 #ifdef VERBOSE
-        std::cout << "Action : " << i+1 << " { Angle = " << le.getAngle() << ", Velocity : " << le.getVelocity() << " }" << std::endl;
+        std::cout << "Action : " << i+1 << " { Angle = " << pendulumLE.getAngle() << ", Velocity : " << pendulumLE.getVelocity() << " }" << std::endl;
 #endif
 
-        if(!wasTerminal && le.isTerminal()){
-            std::cout << "\tPendulum reached terminal state at step " << i+1 << std::endl;
+        if(!wasTerminal && pendulumLE.isTerminal()){
+            std::cout << "\tPendulum reached terminal state at \033[1;36mstep " << i+1 << "\033[0m" << std::endl;
             wasTerminal = true;
         }
 
     }
-    if (!le.isTerminal()){
-        std::cout << "\tPendulum did not reach terminal state" << std::endl;
+    if (!pendulumLE.isTerminal()){
+        std::cout << "\t\033[1;31mPendulum did not reach terminal state\033[0m" << std::endl;
     }
 
     /* Execution statistics extraction and export */

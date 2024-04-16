@@ -143,8 +143,8 @@ if stages["CodeGen"]
     
     puts "\033[1;32m=====[ CodeGen stage ]=====\033[0m"
 
-    system("./scripts/generate_TPG.rb #{verbose}")
-    checkExitstatus("generate TPG")
+    system("./scripts/start_generation.rb #{verbose}")
+    checkExitstatus("start_generation")
 
 end
 
@@ -217,7 +217,25 @@ if stages["Measures"]
 
         seed = sameSeed ? common_seed : rand(C_UINT_MAX)
 
-        #puts "\033[1;32m\t- Compilation of the embedded binary\033[0m"
+        # Set the seed value and inform the compiler whether we are using INT or not
+
+        if tpgDirName.include?("int")
+            system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=1/g' {} +")
+        else
+            system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=0/g' {} +")
+        end
+        checkExitstatus("find PendulumEmbeddedSTMProject sed -i TYPE_INT")
+
+        system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTPG_SEED=[0-9][0-9]*/-DTPG_SEED=#{seed}/g' {} +")
+        checkExitstatus("find PendulumEmbeddedSTMProject sed -i TPG_SEED")
+
+        #system("find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- \"-DTYPE_INT=[0-9][0-9]*\" {} +")
+        #checkExitstatus("find PendulumEmbeddedSTMProject grep")
+
+        # display changes
+        #find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- "-DTYPE_INT=[0-9][0-9]*" {} +
+        #find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- "-DTPG_SEED=[0-9][0-9]*" {} +
+
         puts "\tCompilation of the embedded binary"
 
         # Usefull compilation bash commands
@@ -225,14 +243,12 @@ if stages["Measures"]
         # make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench //build repo
         # -j20 = 20 jobs; 
     
-        # No matter the TPG, the program on the STM32 will always initialise itself the same way and its random number generator too.
-        # We want the TPGs to have a random initial state, so the seed used to initialise it is geerated via this ruby script.
+        # No matter the TPG, the program on the STM32 will always initialise itself the same 
+        # way and its random number generator too.
+        # We want the TPGs to have a random initial state, so the seed used to initialise 
+        # it is geerated via this ruby script.
         
-        embedded_binary_compilation_string = "make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench TPG_SEED=#{seed}"
-      
-        if tpgDirName.include?("int")
-            embedded_binary_compilation_string += " TYPE_INT=1"
-        end
+        embedded_binary_compilation_string = "make clean -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench |make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench"
 
         if(!verbose)
             embedded_binary_compilation_string += " > /dev/null 2>&1"
@@ -333,15 +349,15 @@ if stages["Measures"]
 
     # Displaying global results
 
-    puts "\033[1;36m=====[ Results summary ]=====\033[0m"
+    puts "\033[1;32m=====[ Measurement summary ]=====\033[0m"
 
     valid_TPG_directories.sort!.each { |tpgDirName|
         #puts "#{tpgDirName}"
         puts "\033[1;33m#{tpgDirName}\033[0m"
         puts "\tAverage current : #{(currentAvgs[tpgDirName] * 1000).round(4)} mA"
         puts "\tAverage power : #{powerAvgs[tpgDirName].round(4)} W"
-        puts "\tAverage step execution time : #{executionTimeAvgs[tpgDirName]}"
-        puts "\tTotal energy consumption : #{(totalEnergyConsumption[tpgDirName] * 1000).round(4)} mJ"
+        puts "\tAverage step execution time : \033[0;35m#{executionTimeAvgs[tpgDirName]}\033[0m"
+        puts "\tTotal energy consumption : \033[1;32m#{(totalEnergyConsumption[tpgDirName] * 1000).round(4)} mJ\033[0m"
         puts "\tRatio Measure/Compute : #{ratioInterruptCompute[tpgDirName]}"
     }
 
@@ -371,26 +387,40 @@ if stages["Analysis"]
             FileUtils.cp("#{srcPath}/instructions.cpp", "Trainer-Generator/src")
             FileUtils.cp("#{srcPath}/params.json", "Trainer-Generator")
             checkExitstatus("cp src dest ExecutionStats")
-            
-            # CMake ExecutionStats target compilation
-            execution_stats_compilation_string = "cmake --build Trainer-Generator/bin --target ExecutionStats"
-            if(!verbose)
-                execution_stats_compilation_string += " > /dev/null 2>&1"
+
+            Dir.chdir('Trainer-Generator/bin') do
+
+                if d.include?('int')
+                    # Specify that we are training on int data type
+                    # the data needs to be scaled accordingly
+                    system("cmake ExecutionStats .. -DTYPE_INT=1 > /dev/null 2>&1")
+                    checkExitstatus("cmake -DTYPE_INT=1 ..")
+                else
+                    system("cmake -DTYPE_INT=0 .. > /dev/null 2>&1")
+                    checkExitstatus("cmake ExecutionStats -DTYPE_INT=0")
+                end
+
+
+                # CMake ExecutionStats target compilation
+                execution_stats_compilation_string = "make ExecutionStats"
+                if(!verbose)
+                    execution_stats_compilation_string += " > /dev/null 2>&1"
+                end
+                system(execution_stats_compilation_string)
+                checkExitstatus("make ExecutionStats")
             end
-            system(execution_stats_compilation_string)
-            checkExitstatus("cmake ExecutionStats")
 
-            # Get initial values from results of the energy bench
-            energyData = {}
-            File.open("#{d}/energy_data.json") { |io| energyData = JSON.load(io) }
+                # Get initial values from results of the energy bench
+                energyData = {}
+                File.open("#{d}/energy_data.json") { |io| energyData = JSON.load(io) }
             
-            # Start replay and execution stats export for 1000 inferences
+                # Start replay and execution stats export for 1000 inferences
 
-            system("./Trainer-Generator/bin/Release/ExecutionStats #{trainingPath}/out_best.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
-            checkExitstatus("./ExecutionStats")
+                system("./Trainer-Generator/bin/Release/ExecutionStats #{trainingPath}/out_best.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
+                checkExitstatus("./ExecutionStats")
 
-            # Move executions_stats.json to result directory
-            FileUtils.mv("#{trainingPath}/executionStats.json", "#{d}")
+                # Move executions_stats.json to result directory
+                FileUtils.mv("#{trainingPath}/executionStats.json", "#{d}")
         }
 
 end
