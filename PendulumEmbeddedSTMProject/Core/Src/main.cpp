@@ -35,7 +35,7 @@
 #include "TimingBench.h"
 #include "ina219.h"
 extern "C" {
-	#include <TPGprograms.h>
+	#include <TPGPrograms.h>
 }
 
 /* USER CODE END Includes */

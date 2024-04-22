@@ -118,6 +118,7 @@ int main(int argc, char *argv[]) {
     TPG::ExecutionStats executionStats;
     executionStats.analyzeExecution(tee, &tpgGraph);
     executionStats.writeStatsToJson((dotPath.parent_path().string() + "/executionStats.json").c_str());
+    //placed in CodeGen, latter moved to the current inference_timestamp dir
 
     //std::cout << "End program" << std::endl;
 

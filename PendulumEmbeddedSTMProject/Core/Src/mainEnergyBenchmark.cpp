@@ -154,11 +154,8 @@ int main(void)
 #if TYPE_INT == 1
     std::cout << "TYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
 #else
-    std::cout << "TYPE_INT, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
+    std::cout << "TYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
 #endif
-
-
-
 
 	// Reset pendulum environment and store the initial conditions
 	pendulumEE.reset(seed);

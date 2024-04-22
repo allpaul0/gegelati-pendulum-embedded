@@ -89,7 +89,7 @@ int main() {
     tpg->clearProgramIntrons();
 
     // Print the resulting TPG
-    dotExporter.setNewFilePath(RESULT_EXPORT_PATH "/out_best.dot");
+    dotExporter.setNewFilePath(RESULT_EXPORT_PATH "/best_root_training.dot");
     dotExporter.print();
 
     // Export topology stats on the winning root
@@ -97,7 +97,7 @@ int main() {
     ps.setEnvironment(la.getTPGGraph()->getEnvironment());
     ps.analyzePolicy(la.getBestRoot().first);
     std::ofstream bestStats;
-    bestStats.open(RESULT_EXPORT_PATH "/out_best_stats.md");
+    bestStats.open(RESULT_EXPORT_PATH "/best_root_training_stats.md");
     bestStats << ps;
     bestStats.close();
     stats.close();

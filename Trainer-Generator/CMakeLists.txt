@@ -43,37 +43,41 @@ find_package(GEGELATI)
 
 
 # === Executable target ===
-
-
-add_definitions( -DPROJECT_ROOT_PATH="${CMAKE_CURRENT_SOURCE_DIR}"
+add_definitions( 
+        -DPROJECT_ROOT_PATH="${CMAKE_CURRENT_SOURCE_DIR}"
         -DRESULT_EXPORT_PATH="./Results"
         -DRESULT_DOTFILE_PATH="./Results/dotfiles"
-        )
-file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results/dotfiles)
+)
+file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results)
 file(GLOB_RECURSE
         files
         ./src/instructions.*
         ./src/PendulumLearningEnvironment.*
         ./src/approximateComputingTools.h
         ./params.json
-        )
+)
+
 include_directories(${GEGELATI_INCLUDE_DIRS})
 
-set(TRAIN_TARGET Trainer)
-add_executable(${TRAIN_TARGET} src/mainTrainer.cpp ${files})
-target_link_libraries(${TRAIN_TARGET} ${GEGELATI_LIBRARIES})
+set(TRAINER_TARGET Trainer)
+add_executable(${TRAINER_TARGET} src/mainTrainer.cpp ${files})
+target_link_libraries(${TRAINER_TARGET} ${GEGELATI_LIBRARIES})
+add_custom_command(
+    TARGET ${TRAINER_TARGET} PRE_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results/dotfiles
+)
 
-set(GENERATE_TARGET Generator)
-add_executable(${GENERATE_TARGET} src/mainGenerator.cpp ${files})
-target_link_libraries(${GENERATE_TARGET} ${GEGELATI_LIBRARIES})
+set(GENERATOR_TARGET Generator)
+add_executable(${GENERATOR_TARGET} src/mainGenerator.cpp ${files})
+target_link_libraries(${GENERATOR_TARGET} ${GEGELATI_LIBRARIES})
+add_custom_command(
+    TARGET ${GENERATOR_TARGET} PRE_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results/src
+)
 
 set(EXECUTION_STATS_TARGET ExecutionStats)
 add_executable(${EXECUTION_STATS_TARGET} src/mainExecutionStats.cpp ${files})
 target_link_libraries(${EXECUTION_STATS_TARGET} ${GEGELATI_LIBRARIES})
-
-set(INSTRUMENT_TARGET Instrument)
-add_executable(${INSTRUMENT_TARGET} src/mainInstrument.cpp ${files})
-target_link_libraries(${INSTRUMENT_TARGET} ${GEGELATI_LIBRARIES})
 
 # Test variables
 message("Project configuration :")

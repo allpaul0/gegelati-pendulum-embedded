@@ -143,7 +143,7 @@ if stages["CodeGen"]
     
     puts "\033[1;32m=====[ CodeGen stage ]=====\033[0m"
 
-    system("./scripts/start_generation.rb #{verbose}")
+    system("./scripts/start_code_generation.rb #{verbose}")
     checkExitstatus("start_generation")
 
 end
@@ -155,7 +155,7 @@ if stages["Measures"]
 
     puts "\033[1;32m=====[ Measurments stage ]=====\033[0m"
 
-    requiredFiles = ["CodeGen/TPGGraph.c", "CodeGen/TPGGraph.h", "CodeGen/TPGprograms.c", "CodeGen/TPGprograms.h"]
+    requiredFiles = ["CodeGen/src/TPGGraph.c", "CodeGen/src/TPGGraph.h", "CodeGen/src/TPGPrograms.c", "CodeGen/src/TPGPrograms.h"]
     valid_TPG_directories = getValidDirectories("TPG", requiredFiles)
 
     if valid_TPG_directories.empty?
@@ -197,18 +197,18 @@ if stages["Measures"]
 
         # Source files
         dest = "PendulumEmbeddedSTMProject/Core/Src/Pendulum"
-        ["TPGGraph.c", "TPGprograms.c"].each { |f|
+        ["TPGGraph.c", "TPGPrograms.c"].each { |f|
             
-            src = "#{tpgDirName}/CodeGen/#{f}"
+            src = "#{tpgDirName}/CodeGen/src/#{f}"
             FileUtils.cp(src, dest)
             checkExitstatus("cp src dest Measures")
         }
 
         # Header files
         dest = "PendulumEmbeddedSTMProject/Core/Inc/Pendulum"
-        ["TPGGraph.h", "TPGprograms.h"].each { |f|
+        ["TPGGraph.h", "TPGPrograms.h"].each { |f|
 
-            src = "#{tpgDirName}/CodeGen/#{f}"
+            src = "#{tpgDirName}/CodeGen/src/#{f}"
             FileUtils.cp(src, dest)
             checkExitstatus("cp src dest Measures")
         }
@@ -380,7 +380,8 @@ if stages["Analysis"]
             directory = "TPG/" + match[1] if match
             
             srcPath = "#{d}/../../src"
-            trainingPath= "#{d}/../../training"
+            trainingPath = "#{d}/../../training"
+            codegenPath = "#{d}/../../CodeGen"
 
             # Copying required files for generating Executions stats
             puts "\033[1;33m#{directory}\033[0m"
@@ -416,11 +417,11 @@ if stages["Analysis"]
             
                 # Start replay and execution stats export for 1000 inferences
 
-                system("./Trainer-Generator/bin/Release/ExecutionStats #{trainingPath}/out_best.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
+                system("./Trainer-Generator/bin/Release/ExecutionStats #{codegenPath}/best_root_pruned.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
                 checkExitstatus("./ExecutionStats")
 
                 # Move executions_stats.json to result directory
-                FileUtils.mv("#{trainingPath}/executionStats.json", "#{d}")
+                FileUtils.mv("#{codegenPath}/executionStats.json", "#{d}")
         }
 
 end
@@ -432,11 +433,10 @@ if stages["PlotResults"]
     
     puts "\033[1;32m=====[ PlotResults stage ]=====\033[0m"
     
+    execution_stats_string = "julia --project ./scripts/generate_energy_plots.jl"
     if showGraph
-        system("julia --project ./scripts/generate_energy_plots.jl --show")
-        checkExitstatus("julia generate_energy_plots.jl --show")
-    else
-        system("julia --project ./scripts/generate_energy_plots.jl")
-        checkExitstatus("julia generate_energy_plots.jl")
+        execution_stats_string += " --show"        
     end
+    system(execution_stats_string)
+    checkExitstatus("julia generate_energy_plots.jl")
 end
