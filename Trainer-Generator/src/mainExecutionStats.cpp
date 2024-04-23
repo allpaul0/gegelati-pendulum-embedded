@@ -12,6 +12,15 @@
 
 int main(int argc, char *argv[]) {
 
+
+    std::cout << "\033[1;33m=====[ Execution statistics target ]=====\033[0m" << std::endl;
+
+#if TYPE_INT == 1
+    std::cout << "\tTYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
+#else
+    std::cout << "\tTYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
+#endif
+
     /*
      * This program need 3 to 4 arguments :
      * - argv[1] : path to the .dot file of the TPG to be used, if relative path, starts from call pwd
@@ -22,7 +31,7 @@ int main(int argc, char *argv[]) {
      * The executionStats.json file is generated in the same directory as the .dot file.
      */
 
-    //std::cout << "\033[1;33m=====[ Execution statistics target ]=====\033[0m" << std::endl;
+
     /* Checking arguments */
 
     if(argc < 4){
@@ -30,13 +39,7 @@ int main(int argc, char *argv[]) {
                      "and the initial velocity." << std::endl;
         exit(1);
     }
-
-#if TYPE_INT == 1
-    std::cout << "\tTYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
-#else
-    std::cout << "\tTYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
-#endif
-
+    
     double initalAngle;
     double initialVelocity;
     std::filesystem::path dotPath(argv[1]);

@@ -16,8 +16,15 @@
 #define NBACTIONS 18000
 
 int main(int argc, char *argv[]) {
+    
 
-    std::cout << "\033[1;33m=====[ Instrumentation target ]=====\033[0m" << std::endl;
+    std::cout << "\033[1;33m=====[ Code Generation ]=====\033[0m" << std::endl;
+
+#if TYPE_INT == 1
+    std::cout << "\tTYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
+#else
+    std::cout << "\tTYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
+#endif
 
     /*
      * This program needs 1 argument :
@@ -30,12 +37,6 @@ int main(int argc, char *argv[]) {
         std::cerr << "Missing arguments, this program needs : the path to the .dot file." << std::endl;
         exit(1);
     }
-
-#if TYPE_INT == 1
-    std::cout << "\tTYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
-#else
-    std::cout << "\tTYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << COEFF_DYNAMIC_OPPENING << std::endl;
-#endif
 
     std::filesystem::path dotPath(argv[1]);
 

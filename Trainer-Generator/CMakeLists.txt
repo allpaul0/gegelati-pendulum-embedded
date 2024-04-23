@@ -64,16 +64,18 @@ add_executable(${TRAINER_TARGET} src/mainTrainer.cpp ${files})
 target_link_libraries(${TRAINER_TARGET} ${GEGELATI_LIBRARIES})
 add_custom_command(
     TARGET ${TRAINER_TARGET} PRE_BUILD 
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results/dotfiles
-)
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results/dotfiles)
 
 set(GENERATOR_TARGET Generator)
 add_executable(${GENERATOR_TARGET} src/mainGenerator.cpp ${files})
 target_link_libraries(${GENERATOR_TARGET} ${GEGELATI_LIBRARIES})
 add_custom_command(
     TARGET ${GENERATOR_TARGET} PRE_BUILD 
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results/src
-)
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Results/src)
+
+set(PRECALCUL_TARGET PreCalcul)
+add_executable(${PRECALCUL_TARGET} src/mainPreCalcul.cpp ${files})
+target_link_libraries(${PRECALCUL_TARGET} ${GEGELATI_LIBRARIES})
 
 set(EXECUTION_STATS_TARGET ExecutionStats)
 add_executable(${EXECUTION_STATS_TARGET} src/mainExecutionStats.cpp ${files})

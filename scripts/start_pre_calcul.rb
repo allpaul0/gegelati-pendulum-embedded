@@ -4,18 +4,14 @@ require 'fileutils'
 
 ### Script description ###
 
-# For a given TPG (TPG/XXX in the hierarchy), start the CodeGen if this TPG hasn't been 
-# instrumented, pruned and generated for inference yet.
-# Which means that the repo doesn't contain a "CodeGen" subdir)
+# For a given TPG (TPG/XXX in the hierarchy), using the SEED passed as input param,
+# launch the program mainPreCalcul 
 # See the corresponding README.md in TPG
-
-
-### Functions ###
 
 def check_exit_status(code)
     if code != 0
-        puts "\033[1;91mERROR\033[0m --- Something wrong happened, last exit code is #{code}, exiting script"
-        exit 1
+      puts "\033[1;91mERROR\033[0m --- Something wrong happened, last exit code is #{code}, exiting script"
+      exit 1
     end
 end
 
@@ -42,37 +38,44 @@ end
 
 ### Script ###
 
-# Check if script is called properly, using a verbose param
-if ARGV.empty?
-    puts "Usage: ruby script_name.rb <value of verbose (true/false)>"
+# Check if script is called properly
+if ARGV.length < 2
+    puts "Usage: ruby script_name.rb <verbose: true/false> <seed>"
     exit 1
 end
   
-# Convert the string input to a boolean value
+# Convert the string input to boolean value for verbose
 verbose = ARGV[0].casecmp('true').zero?
 
-# move from the current dir to root dir
-# used to get the absolute path of the directory containing the current script.
+# Extract seed from command line argument
+seed = ARGV[1].to_i
+    
+
+# move from the current dir to Trainer-Generator 
 script_dir = File.expand_path(File.dirname(__FILE__))
 Dir.chdir(File.join(script_dir, '..'))
 check_exit_status($?.to_i)
 
-
 # Trainer-Generator CMake configuration 
 FileUtils.rm_r('Trainer-Generator/bin')
 check_exit_status($?.to_i)
+
 FileUtils.mkdir('Trainer-Generator/bin')
 check_exit_status($?.to_i)
+
 Dir.chdir('Trainer-Generator/bin')
+check_exit_status($?.to_i)
+
+`cmake ..`
 check_exit_status($?.to_i)
 
 
 # launch Cmake command
-trainor_compilation_string = "cmake .."
+trainor_cmake_string = "cmake .."
 unless (verbose)
-  trainor_compilation_string += " > /dev/null 2>&1"
+  trainor_cmake_string += " > /dev/null 2>&1"
 end
-system(trainor_compilation_string)
+system(trainor_cmake_string)
 check_exit_status($?.to_i)
 
 
@@ -85,9 +88,9 @@ check_exit_status($?.to_i)
 dirs = Dir.entries('.').reject { |d| d == '.' || d == '..' || d == 'README.md'}
   
 # check if the object is a dir, if training has been done 
-# (required) and if codegen has not already been done
+# (required) and if codegen has as well already been done
 dirs = dirs.reject do |d|
-    if File.directory?(d) && training_done?(d) && needs_codegen?(d)
+    if File.directory?(d) && training_done?(d) && !needs_codegen?(d)
         false
         puts "Valid dir #{d}"
     else
@@ -98,12 +101,13 @@ end
 Dir.chdir('..') 
 check_exit_status($?.to_i)
 
-#Do CodeGen
+
+#Do PreCalcul
 dirs.each do |d|
     # Be aware that folder name #{d} can cause encoding problems during the copy operation
-    puts "\033[1;36mGenerating CodeGen for #{d}\033[0m"
+    puts "\033[1;36mPrecalcul for #{d}\033[0m"
 
-    # required files for codegen
+    # required files for inference on x86
     system("cp TPG/#{d}/src/instructions.cpp Trainer-Generator/src/")
     check_exit_status($?.to_i)
     system("cp TPG/#{d}/src/params.json Trainer-Generator/")
@@ -111,35 +115,40 @@ dirs.each do |d|
   
     Dir.chdir('Trainer-Generator/bin') do
 
-        trainor_compilation_string = "cmake"
+        trainor_cmake_string = "cmake"
         
         # Specify that we are doing CodeGen on int data type
         # the data needs to be scaled accordingly
         if d.include?('int')   
-            trainor_compilation_string += " -DTYPE_INT=1 .."
+            trainor_cmake_string += " -DTYPE_INT=1 .."
         else
-            trainor_compilation_string += " -DTYPE_INT=0 .."
+            trainor_cmake_string += " -DTYPE_INT=0 .."
         end
 
         unless (verbose)
-            trainor_compilation_string += " > /dev/null 2>&1"
+            trainor_cmake_string += " > /dev/null 2>&1"
         end
         
-        system(trainor_compilation_string)
+        system(trainor_cmake_string)
         check_exit_status($?.to_i)
 
-        system("make Generator")
+        trainor_compilation_string = "make PreCalcul"
+        unless (verbose)
+            trainor_compilation_string += " > /dev/null 2>&1"
+        end
+
+        system(trainor_compilation_string)
         check_exit_status($?.to_i)
 
         Dir.chdir('Release') do
 
             # Launch the CodeGen            
-            system("./Generator ../../../TPG/#{d}/training/best_root_training.dot")
+            system("./PreCalcul ../../../TPG/#{d}/training/best_root_training.dot #{seed}")# best root training
             check_exit_status($?.to_i)
             puts
             
             # Save the results of the CodeGen into the concerned TPG dir
-            system("mv Results ../../../TPG/#{d}/CodeGen")
+            system("mv Results ../../../TPG/#{d}/PreCalcul")
             check_exit_status($?.to_i)
         
         end

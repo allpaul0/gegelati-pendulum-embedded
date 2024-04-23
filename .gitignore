@@ -7,7 +7,7 @@ PendulumEmbeddedSTMProject/ReleaseEnergyBench/
 PendulumEmbeddedSTMProject/.settings/
 
 #TPG CodeGen files
-TPG/**
+TPG*/**
 !TPG/README.md
 
 # Measurements analysis complation and results files
@@ -23,11 +23,14 @@ picocom.log
 *Manifest.toml
 
 # CLion project for training TPG, genrating codegen and analyse execution with GEGELATI
-Trainer-Generator/bin
+Trainer-Generator/bin/*
 */cmake-build-release
 */cmake-build-debug
 */.idea
-Trainer-Generator/
+Trainer-Generator/CMakeFiles/
+Trainer-Generator/Makefile
+Trainer-Generator/bin*
+Trainer-Generator/cmake_install.cmake
 Trainer-Generator/params.json
 Trash
 

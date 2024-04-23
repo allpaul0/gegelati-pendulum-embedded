@@ -2,8 +2,13 @@
 
 require 'fileutils'
 
+### Script description ###
+
 # Start trainings for subdirectory of TPG if it hasn't been trained yet (Doesn't contain a "training" subdir)
 # See the corresponding README.md in TPG
+  
+
+### Functions ###
 
 def check_exit_status(code)
   if code != 0
@@ -11,7 +16,9 @@ def check_exit_status(code)
     exit 1
   end
 end
-  
+
+
+### Script ###
 
 # move from the current dir to Trainer-Generator 
 # Trainer-Generator is used for training the TPGs on a Learning Environment

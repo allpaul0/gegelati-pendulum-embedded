@@ -7,6 +7,8 @@
 #include "instructions.h"
 
 int main() {
+
+    
     std::cout << "\033[1;33m=====[ Trainer target ]=====\033[0m" << std::endl;
 
 #ifdef TYPE_INT

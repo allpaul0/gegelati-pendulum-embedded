@@ -213,35 +213,28 @@ if stages["Measures"]
             checkExitstatus("cp src dest Measures")
         }
 
+        #FileUtils.cp(, )
+
         # === Compiling executable ===
 
         seed = sameSeed ? common_seed : rand(C_UINT_MAX)
 
         # Set the seed value and inform the compiler whether we are using INT or not
-
         if tpgDirName.include?("int")
-            system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=1/g' {} +")
+            type_int = 1
         else
-            system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=0/g' {} +")
+            type_int = 0
         end
+        system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=0/g' {} +")
         checkExitstatus("find PendulumEmbeddedSTMProject sed -i TYPE_INT")
 
         system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTPG_SEED=[0-9][0-9]*/-DTPG_SEED=#{seed}/g' {} +")
         checkExitstatus("find PendulumEmbeddedSTMProject sed -i TPG_SEED")
 
-        #system("find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- \"-DTYPE_INT=[0-9][0-9]*\" {} +")
-        #checkExitstatus("find PendulumEmbeddedSTMProject grep")
-
         # display changes
-        #find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- "-DTYPE_INT=[0-9][0-9]*" {} +
-        #find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- "-DTPG_SEED=[0-9][0-9]*" {} +
+        #system("find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- \"-DTYPE_INT=[0-9][0-9]*\" {} +")
 
         puts "\tCompilation of the embedded binary"
-
-        # Usefull compilation bash commands
-        # make clean -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench //clean repo
-        # make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench //build repo
-        # -j20 = 20 jobs; 
     
         # No matter the TPG, the program on the STM32 will always initialise itself the same 
         # way and its random number generator too.
