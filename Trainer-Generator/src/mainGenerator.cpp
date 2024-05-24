@@ -13,7 +13,8 @@
 // clearHicthhickers()
 // Export dot file
 
-#define NBACTIONS 18000
+#define DEFAULT_NB_ACTIONS 1000
+#define DEFAULT_NB_SEEDS 100
 
 int main(int argc, char *argv[]) {
     
@@ -33,12 +34,38 @@ int main(int argc, char *argv[]) {
 
     /* Checking arguments */
 
-    if(argc < 2){
-        std::cerr << "Missing arguments, this program needs : the path to the .dot file." << std::endl;
+    if(argc < 3){
+        std::cerr << "Missing arguments, this program needs (in order) : the path to the .dot file, a seed." << std::endl;
         exit(1);
     }
 
     std::filesystem::path dotPath(argv[1]);
+    unsigned int initial_seed;
+    int nbActions = DEFAULT_NB_ACTIONS;
+    int nbSeeds = DEFAULT_NB_SEEDS;
+
+    try{
+        initial_seed = (unsigned int) std::stoi(argv[2]);
+    }
+    catch (const std::invalid_argument& e){
+        std::cerr << "seed is not an int" << std::endl;
+        exit(1);
+    }
+
+    
+    /* Generate an array of seeds */
+    
+    // Set the seed for the RNG
+    srand(initial_seed);
+
+    // Array to store the nbSeeds generated seeds
+    unsigned int seeds[nbSeeds];
+
+    // Generate nbSeeds seeds using the initial seed
+    for (int i = 0; i < nbSeeds; ++i) {
+        seeds[i] = rand(); // Generate a random seed
+    }
+
 
     /* Settings */
 
@@ -50,12 +77,11 @@ int main(int argc, char *argv[]) {
     Learn::LearningParameters params;
     File::ParametersParser::loadParametersFromJson(PROJECT_ROOT_PATH "/params.json", params);
 
+
     /* Setup Pendulum environment and import graph */
 
     // Setup environment
     PendulumLearningEnvironment pendulumLE({ 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0 });
-    double initalAngle = -3.14159;
-    double initialVelocity = 0.380002;
 
     // Load graph from dot file
     Environment env(set, pendulumLE.getDataSources(), params.nbRegisters, params.nbProgramConstant);
@@ -67,56 +93,75 @@ int main(int argc, char *argv[]) {
     const TPG::TPGVertex* root(tpgGraph.getRootVertices().back());
     TPG::TPGExecutionEngineInstrumented tee(env);
     
-    
-    /* Play the game once to identify useful edges & vertices (TPG Inference) */
+    int scorePruned[nbSeeds], scoreOrig[nbSeeds], idActionsPruned[nbSeeds], idActionsOrig[nbSeeds];
+
+    /***** Play the game once to identify useful edges & vertices (TPG Inference) *****/
 
     // output stream for tracabillity of the inference actions
     std::ofstream ofs (RESULT_EXPORT_PATH "/tpg_inference_actions_orig.txt", std::ofstream::out);
+    int sum = 0;
 
-    // reset Learning Environment, counter
-    pendulumLE.reset(initalAngle, initialVelocity);
-    int idActionsOrig = 0;
-    
-    std::cout << "Inference of original TPG" << std::endl;
-    while(idActionsOrig < NBACTIONS && !pendulumLE.isTerminal()){
-    	auto actionID = ((TPG::TPGAction*)(tee.executeFromRoot(*root).back()))->getActionID();
-        pendulumLE.doAction(actionID);
-        ofs << idActionsOrig << " " << actionID << std::endl;
-        idActionsOrig++;
+    for(int i=0; i<nbSeeds; i++){
+        // reset Learning Environment, counter
+        pendulumLE.reset(seeds[i]);
+        idActionsOrig[i] = 0;
+        
+        //std::cout << "Inference of original TPG" << std::endl;
+        
+        while(idActionsOrig[i] < nbActions && !pendulumLE.isTerminal()){
+            auto actionID = ((TPG::TPGAction*)(tee.executeFromRoot(*root).back()))->getActionID();
+            pendulumLE.doAction(actionID);
+            ofs << idActionsOrig[i] << " " << actionID << std::endl;
+            idActionsOrig[i]++;
+        }
+        scoreOrig[i] = pendulumLE.getScore();
+        if(scoreOrig[i]>0){
+            sum++;
+        }
+        //std::cout << "Total score: " << scoreOrig[i] << " in "  << idActionsOrig[i] << " actions." << std::endl;
     }
-    auto scoreOrig = pendulumLE.getScore();
-    std::cout << "Total score: " << scoreOrig << " in "  << idActionsOrig << " actions." << std::endl;
+    
     ofs.close();
 
 
     // Clear Hitchhickers (the unused vertices & teams)
     ((const TPG::TPGFactoryInstrumented&)tpgGraph.getFactory()).clearUnusedTPGGraphElements(tpgGraph);
 
-
-    /* Replay the game to make sure results are unchanged after deleting parts of the TPG (TPG Inference) */
+    
+    /***** Replay the game to make sure results are unchanged after deleting parts of the TPG (TPG Inference) *****/
     
     // output stream for tracabillity of the inference actions
     std::ofstream ofs2 (RESULT_EXPORT_PATH "/tpg_cleaned_inference_actions.txt", std::ofstream::out);
     
-    // reset Learning Environment, counter
-    pendulumLE.reset(initalAngle, initialVelocity);
-    int idActionsPruned = 0;
-    
-    std::cout << "Inference of cleaned TPG code" << std::endl;
-    while(idActionsPruned < 18000 && !pendulumLE.isTerminal()){
-    	auto actionID = ((TPG::TPGAction*)(tee.executeFromRoot(* root).back()))->getActionID();
-        pendulumLE.doAction(actionID);
-        ofs2 << idActionsPruned << " " << actionID << std::endl;
-        idActionsPruned++;
+    for(int i=0; i<nbSeeds; i++){
+        // reset Learning Environment, counter
+        pendulumLE.reset(seeds[i]);
+        idActionsPruned[i] = 0;
+        
+        //std::cout << "Inference of cleaned TPG code" << std::endl;
+        while(idActionsPruned[i] < nbActions && !pendulumLE.isTerminal()){
+            auto actionID = ((TPG::TPGAction*)(tee.executeFromRoot(* root).back()))->getActionID();
+            pendulumLE.doAction(actionID);
+            ofs2 << idActionsPruned[i] << " " << actionID << std::endl;
+            idActionsPruned[i]++;
+        }
+        scorePruned[i] = pendulumLE.getScore();
+        //std::cout << "Total score: " << scorePruned[i] << " in "  << idActionsPruned[i] << " actions." << std::endl;
     }
-    auto scorePruned = pendulumLE.getScore();
-    std::cout << "Total score: " << scorePruned << " in "  << idActionsPruned << " actions." << std::endl;
+
+
+
     ofs.close();
 
-    if(scorePruned != scoreOrig || idActionsPruned != idActionsOrig){
-        std::cout << "Determinism was lost during graph cleaning." << std::endl;
-        exit(1);
+    for(int i=0; i<nbSeeds; i++){
+        if(scorePruned[i] != scoreOrig[i] || idActionsPruned[i] != idActionsOrig[i]){
+            std::cout << "Seed: " << i << ", determinism was lost during graph cleaning." << std::endl;
+            exit(1);
+        }
     }
+
+    double percentCorrectPred = ((double) sum/(double) nbSeeds)*100;
+    std::cout << "percentCorrectPred: " << percentCorrectPred << std::endl; 
 
     // Get stats on graph to get the required stack size
     std::cout << "Analyze graph." << std::endl;

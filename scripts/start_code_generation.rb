@@ -29,13 +29,14 @@ def training_done?(d)
     end
 end
   
-def needs_codegen?(d)
+def codegen_done?(d)
     codegen_dir = File.join(d, 'CodeGen')
     if File.directory?(codegen_dir)
       puts "\033[1;36mSkip #{d} \033[0m(CodeGen already done)\n"
-      false
-    else
       true
+    else
+      
+      false
     end
 end
   
@@ -50,6 +51,9 @@ end
   
 # Convert the string input to a boolean value
 verbose = ARGV[0].casecmp('true').zero?
+
+# hardcoded for tracability
+seed = 0
 
 # move from the current dir to root dir
 # used to get the absolute path of the directory containing the current script.
@@ -87,7 +91,7 @@ dirs = Dir.entries('.').reject { |d| d == '.' || d == '..' || d == 'README.md'}
 # check if the object is a dir, if training has been done 
 # (required) and if codegen has not already been done
 dirs = dirs.reject do |d|
-    if File.directory?(d) && training_done?(d) && needs_codegen?(d)
+    if File.directory?(d) && training_done?(d) && !codegen_done?(d)
         false
         puts "Valid dir #{d}"
     else
@@ -134,7 +138,7 @@ dirs.each do |d|
         Dir.chdir('Release') do
 
             # Launch the CodeGen            
-            system("./Generator ../../../TPG/#{d}/training/best_root_training.dot")
+            system("./Generator ../../../TPG/#{d}/training/best_root_training.dot #{seed}")
             check_exit_status($?.to_i)
             puts
             

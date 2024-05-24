@@ -13,7 +13,7 @@
 // #define VERBOSE
 
 // Function to write data from two arrays to a CSV file
-void writeCSV(const std::string& filename, const unsigned int* array1, const int* array2, size_t nbValues) {
+void storeToCProgram(const std::string& filename, const unsigned int* seeds, const int* nbActionsToTerminal, size_t nbValues) {
     std::ofstream file(filename);
 
     if (!file.is_open()) {
@@ -21,9 +21,30 @@ void writeCSV(const std::string& filename, const unsigned int* array1, const int
         return;
     }
 
-    for (size_t i = 0; i < nbValues; ++i) {
-        file << array1[i] << "," << array2[i] << "\n"; // Write pair of values separated by comma
+    // write Header
+    file << "#ifndef SEEDS_H\n"
+        << "#define SEEDS_H\n\n"
+
+        << "#define NB_SEED " << nbValues << "\n\n"
+
+        << "static const unsigned int seeds[NB_SEED] = {";
+
+    // write content of seeds array
+    size_t i;
+    for (i = 0; i < nbValues-1; ++i) {
+        file << seeds[i] << ", "; 
     }
+    file << seeds[i] << "};\n"
+        << "static const int nbActionsToTerminal[NB_SEED] = {";
+
+    // write content of nbActionsToTerminal array
+    for (i = 0; i < nbValues-1; ++i) {
+        file << nbActionsToTerminal[i] << ", "; 
+    }
+    file << nbActionsToTerminal[i] << "};\n\n";
+
+    // write Footer
+    file << "#endif /* SEEDS_H */";
 
     file.close();
 }
@@ -72,10 +93,10 @@ int main(int argc, char *argv[]) {
     // Set the seed for the RNG
     srand(initial_seed);
 
-    // Array to store the 20 generated seeds
+    // Array to store the nbSeeds generated seeds
     unsigned int seeds[nbSeeds];
 
-    // Generate 20 seeds using the initial seed
+    // Generate nbSeeds seeds using the initial seed
     for (int i = 0; i < nbSeeds; ++i) {
         seeds[i] = rand(); // Generate a random seed
     }
@@ -148,7 +169,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Write data to CSV file
-    writeCSV("Results/seeds_nbActionsToTerminal.csv", seeds, nbActionsToTerminal, nbSeeds);
+    storeToCProgram("Results/seeds_nbActionsToTerminal.h", seeds, nbActionsToTerminal, nbSeeds);
 
     std::cout << "Data written to Results/seeds_nbActionsToTerminal.csv successfully." << std::endl;
 

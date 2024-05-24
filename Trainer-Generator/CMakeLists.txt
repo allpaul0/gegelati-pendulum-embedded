@@ -81,6 +81,10 @@ set(EXECUTION_STATS_TARGET ExecutionStats)
 add_executable(${EXECUTION_STATS_TARGET} src/mainExecutionStats.cpp ${files})
 target_link_libraries(${EXECUTION_STATS_TARGET} ${GEGELATI_LIBRARIES})
 
+set(VALIDATION_TARGET Validation)
+add_executable(${VALIDATION_TARGET} src/mainValidation.cpp ${files})
+target_link_libraries(${VALIDATION_TARGET} ${GEGELATI_LIBRARIES})
+
 # Test variables
 message("Project configuration :")
 message("Build type : ${CMAKE_BUILD_TYPE}")

@@ -1,6 +1,6 @@
 /**
  * File generated with GEGELATI v1.3.1
- * On the 2024-04-19 16:32:58
+ * On the 2024-04-30 11:04:22
  * With the CodeGen::TPGGenerationEngine.
  */
 
@@ -14,13 +14,11 @@
 #include <stdint.h>
 #include <math.h>
 
-int bestProgram(int *results, int nb) {
+int bestProgram(double *results, int nb) {
 	int bestProgram = 0;
-	//int bestScore = (isnan(results[0]))? -INFINITY : results[0];
-	int bestScore = results[0];
+	double bestScore = (isnan(results[0]))? -INFINITY : results[0];
 	for (int i = 1; i < nb; i++) {
-		//int challengerScore = (isnan(results[i]))? -INFINITY : results[i];
-		int challengerScore = results[i];
+		double challengerScore = (isnan(results[i]))? -INFINITY : results[i];
 		if (challengerScore >= bestScore) {
 			bestProgram = i;
 			bestScore = challengerScore;
@@ -38,7 +36,7 @@ int inferenceTPG() {
 		case T0: {
 			const enum vertices next[2] = { A14, A15,  };
 
-			int T0Scores[2];
+			double T0Scores[2];
 
 			T0Scores[0] = P0();
 			T0Scores[1] = P1();
@@ -50,7 +48,7 @@ int inferenceTPG() {
 		case T1: {
 			const enum vertices next[3] = { A16, A17, A14,  };
 
-			int T1Scores[3];
+			double T1Scores[3];
 
 			T1Scores[0] = P2();
 			T1Scores[1] = P3();
@@ -63,7 +61,7 @@ int inferenceTPG() {
 		case T2: {
 			const enum vertices next[3] = { A16, T1, A15,  };
 
-			int T2Scores[3];
+			double T2Scores[3];
 
 			T2Scores[0] = P5();
 			T2Scores[1] = P6();
@@ -76,7 +74,7 @@ int inferenceTPG() {
 		case T3: {
 			const enum vertices next[3] = { T1, A18, T0,  };
 
-			int T3Scores[3];
+			double T3Scores[3];
 
 			T3Scores[0] = P8();
 			T3Scores[1] = P9();
@@ -89,7 +87,7 @@ int inferenceTPG() {
 		case T4: {
 			const enum vertices next[3] = { T2, T2, T1,  };
 
-			int T4Scores[3];
+			double T4Scores[3];
 
 			T4Scores[0] = P11();
 			T4Scores[1] = P12();
@@ -102,7 +100,7 @@ int inferenceTPG() {
 		case T5: {
 			const enum vertices next[2] = { T3, T2,  };
 
-			int T5Scores[2];
+			double T5Scores[2];
 
 			T5Scores[0] = P14();
 			T5Scores[1] = P15();
@@ -114,7 +112,7 @@ int inferenceTPG() {
 		case T6: {
 			const enum vertices next[3] = { T4, T3, T2,  };
 
-			int T6Scores[3];
+			double T6Scores[3];
 
 			T6Scores[0] = P16();
 			T6Scores[1] = P17();
@@ -127,7 +125,7 @@ int inferenceTPG() {
 		case T7: {
 			const enum vertices next[5] = { T5, T4, T2, T2, T2,  };
 
-			int T7Scores[5];
+			double T7Scores[5];
 
 			T7Scores[0] = P19();
 			T7Scores[1] = P20();
@@ -142,7 +140,7 @@ int inferenceTPG() {
 		case T8: {
 			const enum vertices next[3] = { T7, T1, T6,  };
 
-			int T8Scores[3];
+			double T8Scores[3];
 
 			T8Scores[0] = P24();
 			T8Scores[1] = P25();
@@ -155,7 +153,7 @@ int inferenceTPG() {
 		case T9: {
 			const enum vertices next[2] = { T6, T8,  };
 
-			int T9Scores[2];
+			double T9Scores[2];
 
 			T9Scores[0] = P27();
 			T9Scores[1] = P28();
@@ -167,7 +165,7 @@ int inferenceTPG() {
 		case T10: {
 			const enum vertices next[3] = { T9, T1, A19,  };
 
-			int T10Scores[3];
+			double T10Scores[3];
 
 			T10Scores[0] = P29();
 			T10Scores[1] = P30();
@@ -180,7 +178,7 @@ int inferenceTPG() {
 		case T11: {
 			const enum vertices next[3] = { T10, T4, T10,  };
 
-			int T11Scores[3];
+			double T11Scores[3];
 
 			T11Scores[0] = P32();
 			T11Scores[1] = P33();
@@ -193,7 +191,7 @@ int inferenceTPG() {
 		case T12: {
 			const enum vertices next[3] = { T11, T10, T10,  };
 
-			int T12Scores[3];
+			double T12Scores[3];
 
 			T12Scores[0] = P35();
 			T12Scores[1] = P36();
@@ -206,7 +204,7 @@ int inferenceTPG() {
 		case T13: {
 			const enum vertices next[3] = { T10, T2, T12,  };
 
-			int T13Scores[3];
+			double T13Scores[3];
 
 			T13Scores[0] = P38();
 			T13Scores[1] = P39();

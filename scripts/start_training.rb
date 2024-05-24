@@ -7,6 +7,7 @@ require 'fileutils'
 # Start trainings for subdirectory of TPG if it hasn't been trained yet (Doesn't contain a "training" subdir)
 # See the corresponding README.md in TPG
   
+directory_to_train = "TPG_to_train"
 
 ### Functions ###
 
@@ -46,7 +47,7 @@ check_exit_status($?.to_i)
 Dir.chdir('../..')
 check_exit_status($?.to_i)
 
-dirs = Dir.entries('TPG')
+dirs = Dir.entries("#{directory_to_train}")
 
 # reject theses entries from the list
 dirs = dirs.reject do |d|
@@ -55,7 +56,7 @@ end
 
 # reject already trained dirs
 dirs = dirs.reject do |d|
-  if File.directory?(File.join('TPG', d, 'training'))
+  if File.directory?(File.join("#{directory_to_train}", d, 'training'))
     puts "\033[0;93mDirectory #{d} already trained.\033[0m"
     true
   end
@@ -68,9 +69,9 @@ dirs.each do |d|
   # Be aware that folder name can cause encoding problems during cp !
   puts "\033[0;94mTraining directory #{d}\033[0m"
 
-  system("cp TPG/#{d}/src/instructions.cpp Trainer-Generator/src/")
+  system("cp #{directory_to_train}/#{d}/src/instructions.cpp Trainer-Generator/src/")
   check_exit_status($?.to_i)
-  system("cp TPG/#{d}/src/params.json Trainer-Generator/")
+  system("cp #{directory_to_train}/#{d}/src/params.json Trainer-Generator/")
   check_exit_status($?.to_i)
 
   Dir.chdir('Trainer-Generator/bin') do
@@ -96,7 +97,7 @@ dirs.each do |d|
       check_exit_status($?.to_i)
 
       # Save results
-      system("mv Results ../../../TPG/#{d}/training")
+      system("mv Results ../../../#{directory_to_train}/#{d}/training")
       check_exit_status($?.to_i)
     end
   end

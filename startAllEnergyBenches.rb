@@ -225,11 +225,9 @@ if stages["Measures"]
         else
             type_int = 0
         end
+        
         system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=0/g' {} +")
         checkExitstatus("find PendulumEmbeddedSTMProject sed -i TYPE_INT")
-
-        system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTPG_SEED=[0-9][0-9]*/-DTPG_SEED=#{seed}/g' {} +")
-        checkExitstatus("find PendulumEmbeddedSTMProject sed -i TPG_SEED")
 
         # display changes
         #system("find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- \"-DTYPE_INT=[0-9][0-9]*\" {} +")

@@ -37,7 +37,7 @@
 #include "PendulumINA219Monitor.h"
 #include "ina219.h"
 #include "TimeUnit.h"
-
+#include "seeds_nbActionsToTerminal.h"
 
 /* USER CODE END Includes */
 
@@ -73,7 +73,7 @@ const char logEnd[] = "##### Log End #####";
 
 uint32_t seed = 0;  // Seed use to reset the PendulumEnvironment
 extern "C" {
-	#if TYPE_INT == 1
+  #if TYPE_INT == 1
 	extern int* in1;
   #else
 	extern double* in1;
@@ -144,11 +144,6 @@ int main(void)
 
  	std::cout << "START" << std::endl;  // send (SYN) signal
 
-#ifdef TPG_SEED
-	seed = TPG_SEED;
-	std::cout << "SEED is defined as:" << seed << std::endl;
-#endif
-
 	int coeff = COEFF_DYNAMIC_OPPENING;
 
 #if TYPE_INT == 1
@@ -158,7 +153,7 @@ int main(void)
 #endif
 
 	// Reset pendulum environment and store the initial conditions
-	pendulumEE.reset(seed);
+	pendulumEE.reset(seeds[0]);
 	initAngle = pendulumEE.getAngle();
 	initVelocity = pendulumEE.getVelocity();
 
@@ -195,15 +190,14 @@ int main(void)
 
     //synchronization with PC
 		do {
-
-		  std::cout << "Seed STM32 : " << seed << std::endl;
-      //std::cout << "\tInitial parameter {Angle : " << initAngle
+		  //std::cout << "\tInitial parameter {Angle : " << initAngle
       //          << ", Velocity : " << initVelocity << "}" << std::endl;
 		  read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
 		  HAL_Delay(1000);  // wait for 1 second
 		}
 		while (buffStart != '\n'); // (ACK) signal is a newline character
 
+    std::cout << "Seed : " << seed << std::endl;
 
     /* Energy consumption measurements */
     std::cout << "Starting energy bench" << std::endl;
@@ -288,7 +282,7 @@ void SystemClock_Config(void)
 void benchWrapper(void){
   // set similar starting conditions as Energy consumption measurements
   pendulumEE_ptr->reset(initAngle, initVelocity);
-	pendulumEE_ptr->startInference((int)nbActions);
+  pendulumEE_ptr->startInference((int)nbActions);
 }
 
 /* USER CODE END 4 */

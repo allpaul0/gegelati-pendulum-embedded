@@ -95,11 +95,9 @@ public:
 
 	/// Inherited via LearningEnvironment
 	virtual void reset(size_t seed = 0, 
-		Learn::LearningMode mode = Learn::LearningMode::TRAINING,
-		uint16_t iterationNumber = 0, 
-		uint64_t generationNumber = 0) override;
+		Learn::LearningMode mode = Learn::LearningMode::TRAINING) override;
 
-	virtual void reset(double initalAngle, double initialVelocity);
+	void reset(double initalAngle, double initialVelocity);
 
 	/**
 	* \brief Get the action from its associated ID.
