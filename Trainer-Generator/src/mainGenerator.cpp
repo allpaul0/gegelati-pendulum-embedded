@@ -44,6 +44,8 @@ int main(int argc, char *argv[]) {
     int nbActions = DEFAULT_NB_ACTIONS;
     int nbSeeds = DEFAULT_NB_SEEDS;
 
+    std::cout << "nbSeeds: " << nbSeeds << std::endl;
+
     try{
         initial_seed = (unsigned int) std::stoi(argv[2]);
     }
@@ -95,6 +97,7 @@ int main(int argc, char *argv[]) {
     
     int scorePruned[nbSeeds], scoreOrig[nbSeeds], idActionsPruned[nbSeeds], idActionsOrig[nbSeeds];
 
+
     /***** Play the game once to identify useful edges & vertices (TPG Inference) *****/
 
     // output stream for tracabillity of the inference actions
@@ -126,13 +129,17 @@ int main(int argc, char *argv[]) {
 
     // Clear Hitchhickers (the unused vertices & teams)
     ((const TPG::TPGFactoryInstrumented&)tpgGraph.getFactory()).clearUnusedTPGGraphElements(tpgGraph);
+    
+    // Clear the trace history from all previous inference trace.
+    // Execution Stats uses this trace to generate statistics of inference.
+    tee.clearInferenceTraceHistory();
 
     
     /***** Replay the game to make sure results are unchanged after deleting parts of the TPG (TPG Inference) *****/
     
     // output stream for tracabillity of the inference actions
     std::ofstream ofs2 (RESULT_EXPORT_PATH "/tpg_cleaned_inference_actions.txt", std::ofstream::out);
-    
+
     for(int i=0; i<nbSeeds; i++){
         // reset Learning Environment, counter
         pendulumLE.reset(seeds[i]);
@@ -149,8 +156,6 @@ int main(int argc, char *argv[]) {
         //std::cout << "Total score: " << scorePruned[i] << " in "  << idActionsPruned[i] << " actions." << std::endl;
     }
 
-
-
     ofs.close();
 
     for(int i=0; i<nbSeeds; i++){
@@ -159,6 +164,7 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     }
+    
 
     double percentCorrectPred = ((double) sum/(double) nbSeeds)*100;
     std::cout << "percentCorrectPred: " << percentCorrectPred << std::endl; 
