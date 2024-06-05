@@ -46,13 +46,22 @@ end
 ### Script ###
 
 # Check if script is called properly, using a verbose param
-if ARGV.empty?
-    puts "Usage: ruby script_name.rb <value of verbose (true/false)>"
+if ARGV.length < 2
+    puts "Usage: ruby script_name.rb <value of verbose (true/false)> <name of TPG dir (default: \"TPG\")>"
     exit 1
 end
   
 # Convert the string input to a boolean value
 verbose = ARGV[0].casecmp('true').zero?
+
+# Ensure the second argument is a non-empty string
+TPG_dir = ARGV[1]
+if TPG_dir.nil? || TPG_dir.strip.empty?
+    puts "Error: The name of TPG dir must be a non-empty string."
+    puts "Usage: ruby script_name.rb <value of verbose (true/false)> <name of TPG dir (default: \"TPG\")>"
+    exit 1
+end
+
 
 # hardcoded for tracability
 seed = 0
@@ -83,7 +92,7 @@ check_exit_status($?.to_i)
 
 
 # go to TPG dir
-Dir.chdir('../../TPG') 
+Dir.chdir("../../#{TPG_dir}") 
 check_exit_status($?.to_i)
 
 
@@ -110,9 +119,9 @@ dirs.each do |d|
     puts "\033[1;36mStarting Validation for #{d}\033[0m"
 
     # required files for codegen
-    system("cp TPG/#{d}/src/instructions.cpp Trainer-Generator/src/")
+    system("cp #{TPG_dir}/#{d}/src/instructions.cpp Trainer-Generator/src/")
     check_exit_status($?.to_i)
-    system("cp TPG/#{d}/src/params.json Trainer-Generator/")
+    system("cp #{TPG_dir}/#{d}/src/params.json Trainer-Generator/")
     check_exit_status($?.to_i)
   
     Dir.chdir('Trainer-Generator/bin') do
@@ -140,15 +149,15 @@ dirs.each do |d|
         Dir.chdir('Release') do
 
             # Launch the CodeGen            
-            system("./Validation ../../../TPG/#{d}/CodeGen/best_root_pruned.dot #{seed}")
+            system("./Validation ../../../#{TPG_dir}/#{d}/CodeGen/best_root_pruned.dot #{seed}")
             check_exit_status($?.to_i)
             puts
             
-            #Dir.mkdir("../../../TPG/#{d}/Validation/#{resultDirPrefix}")
+            #Dir.mkdir("../../../#{TPG_dir}/#{d}/Validation/#{resultDirPrefix}")
             #checkExitstatus("mkdir resultPath timestamp")
 
             # Save the results of the CodeGen into the concerned TPG dir
-            system("mv Results ../../../TPG/#{d}/validation") #/{resultDirPrefix}
+            system("mv Results ../../../#{TPG_dir}/#{d}/validation") #/{resultDirPrefix}
             check_exit_status($?.to_i)
         
         end

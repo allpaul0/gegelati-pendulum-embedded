@@ -7,8 +7,6 @@ require 'fileutils'
 # Start trainings for subdirectory of TPG if it hasn't been trained yet (Doesn't contain a "training" subdir)
 # See the corresponding README.md in TPG
   
-directory_to_train = "TPG_to_train"
-
 ### Functions ###
 
 def check_exit_status(code)
@@ -20,6 +18,20 @@ end
 
 
 ### Script ###
+
+# Check if script is called properly, using a verbose param
+if ARGV.length < 1
+  puts "Usage: ruby script_name.rb <name of TPG dir (default: \"TPG\")>"
+  exit 1
+end
+
+# Ensure the second argument is a non-empty string
+TPG_dir = ARGV[0]
+if TPG_dir.nil? || TPG_dir.strip.empty?
+  puts "Error: The name of TPG dir must be a non-empty string."
+  puts "Usage: ruby script_name.rb <name of TPG dir (default: \"TPG\")>"
+  exit 1
+end
 
 # move from the current dir to Trainer-Generator 
 # Trainer-Generator is used for training the TPGs on a Learning Environment
@@ -47,7 +59,7 @@ check_exit_status($?.to_i)
 Dir.chdir('../..')
 check_exit_status($?.to_i)
 
-dirs = Dir.entries("#{directory_to_train}")
+dirs = Dir.entries("#{TPG_dir}")
 
 # reject theses entries from the list
 dirs = dirs.reject do |d|
@@ -56,7 +68,7 @@ end
 
 # reject already trained dirs
 dirs = dirs.reject do |d|
-  if File.directory?(File.join("#{directory_to_train}", d, 'training'))
+  if File.directory?(File.join("#{TPG_dir}", d, 'training'))
     puts "\033[0;93mDirectory #{d} already trained.\033[0m"
     true
   end
@@ -69,9 +81,9 @@ dirs.each do |d|
   # Be aware that folder name can cause encoding problems during cp !
   puts "\033[0;94mTraining directory #{d}\033[0m"
 
-  system("cp #{directory_to_train}/#{d}/src/instructions.cpp Trainer-Generator/src/")
+  system("cp #{TPG_dir}/#{d}/src/instructions.cpp Trainer-Generator/src/")
   check_exit_status($?.to_i)
-  system("cp #{directory_to_train}/#{d}/src/params.json Trainer-Generator/")
+  system("cp #{TPG_dir}/#{d}/src/params.json Trainer-Generator/")
   check_exit_status($?.to_i)
 
   Dir.chdir('Trainer-Generator/bin') do
@@ -97,7 +109,7 @@ dirs.each do |d|
       check_exit_status($?.to_i)
 
       # Save results
-      system("mv Results ../../../#{directory_to_train}/#{d}/training")
+      system("mv Results ../../../#{TPG_dir}/#{d}/training")
       check_exit_status($?.to_i)
     end
   end

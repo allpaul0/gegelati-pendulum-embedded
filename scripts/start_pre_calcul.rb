@@ -49,8 +49,8 @@ end
 ### Script ###
 
 # Check if script is called properly
-if ARGV.length < 2
-    puts "Usage: ruby script_name.rb <verbose: true/false> <seed>"
+if ARGV.length < 3
+    puts "Usage: ruby script_name.rb <verbose: true/false> <seed> <name of TPG dir (default: \"TPG\")>"
     exit 1
 end
   
@@ -59,6 +59,14 @@ verbose = ARGV[0].casecmp('true').zero?
 
 # Extract seed from command line argument
 seed = ARGV[1].to_i
+
+# Ensure the third argument is a non-empty string
+TPG_dir = ARGV[2]
+if TPG_dir.nil? || TPG_dir.strip.empty?
+    puts "Error: The name of TPG dir must be a non-empty string."
+    puts "Usage: ruby script_name.rb <verbose: true/false> <seed> <name of TPG dir (default: \"TPG\")>"
+    exit 1
+end
     
 
 # move from the current dir to Trainer-Generator 
@@ -90,7 +98,7 @@ check_exit_status($?.to_i)
 
 
 # go to TPG dir
-Dir.chdir('../../TPG') 
+Dir.chdir("../../#{TPG_dir}") 
 check_exit_status($?.to_i)
 
 
@@ -101,7 +109,7 @@ dirs = Dir.entries('.').reject { |d| d == '.' || d == '..' || d == 'README.md'}
 # check if the object is a dir, if training has been done 
 # (required) and if codegen has as well already been done
 dirs = dirs.reject do |d|
-    if File.directory?(d) && training_done?(d) && codegen_done?(d) && !precalcul_done?(d)
+    if File.directory?(d) && training_done?(d) && !precalcul_done?(d) # codegen_done?(d)
         false
         #puts "Valid dir #{d}"
     else
@@ -120,16 +128,16 @@ dirs.each do |d|
     puts "\033[1;36mPrecalcul for #{d}\033[0m"
 
     # required files for inference on x86
-    system("cp TPG/#{d}/src/instructions.cpp Trainer-Generator/src/")
+    system("cp #{TPG_dir}/#{d}/src/instructions.cpp Trainer-Generator/src/")
     check_exit_status($?.to_i)
-    system("cp TPG/#{d}/src/params.json Trainer-Generator/")
+    system("cp #{TPG_dir}/#{d}/src/params.json Trainer-Generator/")
     check_exit_status($?.to_i)
   
     Dir.chdir('Trainer-Generator/bin') do
 
         trainor_cmake_string = "cmake"
         
-        # Specify that we are doing CodeGen on int data type
+        # Specify that we are doing Precalcul on int data type
         # the data needs to be scaled accordingly
         if d.include?('int')   
             trainor_cmake_string += " -DTYPE_INT=1 .."
@@ -154,13 +162,12 @@ dirs.each do |d|
 
         Dir.chdir('Release') do
 
-            # Launch the CodeGen            
-            system("./PreCalcul ../../../TPG/#{d}/training/best_root_training.dot #{seed}")# best root training
+            # Launch the PreCalcul of pairs {seed, nbActionsToTerminal}            
+            system("./PreCalcul ../../../#{TPG_dir}/#{d}/training/best_root_training.dot #{seed}")# best root training
             check_exit_status($?.to_i)
-            puts
             
-            # Save the results of the CodeGen into the concerned TPG dir
-            system("mv Results ../../../TPG/#{d}/PreCalcul")
+            # Save the results of the Precalcul into the concerned TPG dir
+            system("mv Results ../../../#{TPG_dir}/#{d}/PreCalcul")
             check_exit_status($?.to_i)
         
         end
