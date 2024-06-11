@@ -82,8 +82,8 @@ end
 
 # =====[ Program arguments managment ]=====
 
-# CodeGen : generate CodeGen files for all TPG .dot files in valid subdirectories of TPG/
-# Measure : compile, load and run measurements on the STM32 board, and store results, for all valid subdirectories of TPG/
+# CodeGen : generate CodeGen files for all TPG .dot files in valid subdirectories of the #{TPG_dir}
+# Measure : compile, load and run measurements on the STM32 board, and store results, for all valid subdirectories of #{TPG_dir}
 # AnalyzeExecutions : from the measurement results, compute new data and export statistics about the execution that has been measured
 # PlotResults : take all statistics from the previous step and render graphs and plots using julia script and module PlotlyJS 
 # Skip multiple phases
@@ -132,6 +132,26 @@ OptionParser.new{ |parser|
     
 }.parse!
 
+# Ensure TPG_dir is provided
+if ARGV.empty?
+  puts "Error: TPG_dir must be provided."
+  puts "Usage: startAllEnergyBenches.rb [options] TPG_dir"
+  exit(1)
+else
+  TPG_dir = ARGV.shift
+end
+
+# Debugging information if verbose
+if verbose
+  puts "Serial Port: #{serialPortPath}"
+  puts "Stages: #{stages}"
+  puts "Show Graph: #{showGraph}"
+  puts "Same Seed: #{sameSeed}"
+  puts "Common Seed: #{common_seed}" if common_seed
+  puts "Result Dir Prefix: #{resultDirPrefix}"
+  puts "TPG_dir: #{TPG_dir}"
+end
+
 
 
 Dir.chdir "#{__dir__}"  # Set current script current directory, so we can execute it from everywhere
@@ -143,7 +163,7 @@ if stages["CodeGen"]
     
     puts "\033[1;32m=====[ CodeGen stage ]=====\033[0m"
 
-    system("./scripts/start_code_generation.rb #{verbose}")
+    system("./scripts/start_code_generation.rb #{verbose} #{TPG_dir}")
     checkExitstatus("start_generation")
 
 end
@@ -155,11 +175,11 @@ if stages["Measures"]
 
     puts "\033[1;32m=====[ Measurments stage ]=====\033[0m"
 
-    requiredFiles = ["CodeGen/src/TPGGraph.c", "CodeGen/src/TPGGraph.h", "CodeGen/src/TPGPrograms.c", "CodeGen/src/TPGPrograms.h"]
-    valid_TPG_directories = getValidDirectories("TPG", requiredFiles)
+    requiredFiles = ["CodeGen/src/TPGGraph.c", "CodeGen/src/TPGGraph.h", "CodeGen/src/TPGPrograms.c", "CodeGen/src/TPGPrograms.h", "PreCalcul/seeds_nbActionsToTerminal.h"]
+    valid_TPG_directories = getValidDirectories("#{TPG_dir}", requiredFiles)
 
     if valid_TPG_directories.empty?
-        puts "\033[0;31mError: There are no valid TPG subdirectories. Please verify the content of your /TPG folder."
+        puts "\033[0;31mError: There are no valid #{TPG_dir} subdirectories. Please verify the content of your /#{TPG_dir} folder."
         puts "\033[0;31mEnsure that it respects the structure described in: https://github.com/allpaul0/gegelati-pendulum-embedded/tree/master/TPG/README.md"
         exit 1
     else 
@@ -213,7 +233,7 @@ if stages["Measures"]
             checkExitstatus("cp src dest Measures")
         }
 
-        #FileUtils.cp(, )
+        FileUtils.cp("#{tpgDirName}/PreCalcul/seeds_nbActionsToTerminal.h", "PendulumEmbeddedSTMProject/Core/Inc/Pendulum")
 
         # === Compiling executable ===
 
@@ -362,23 +382,29 @@ if stages["Analysis"]
 
     puts "\033[1;32m=====[ Analysis stage ]=====\033[0m"
 
-    Dir.glob("TPG/*/inference/*")
+    Dir.glob("#{TPG_dir}/*/inference/*")
         .filter { |d| not File.exist? "#{d}/executionStats.json" }  # if the file executionStats.json exists, the processing has already been done in the past  
         .filter { |d| File.exist? "#{d}/energy_data.json" }  # make sure the file energy_data.json exists
         .each { |d|
 
-            match = d.match(/TPG\/(.*?)\/inference/)
-            directory = "TPG/" + match[1] if match
+            match = d.match("#{TPG_dir}\/(.*?)\/inference")
+            directory = "#{TPG_dir}/" + match[1] if match
             
-            srcPath = "#{d}/../../src"
-            trainingPath = "#{d}/../../training"
-            codegenPath = "#{d}/../../CodeGen"
-
-            # Copying required files for generating Executions stats
             puts "\033[1;33m#{directory}\033[0m"
-            FileUtils.cp("#{srcPath}/instructions.cpp", "Trainer-Generator/src")
-            FileUtils.cp("#{srcPath}/params.json", "Trainer-Generator")
-            checkExitstatus("cp src dest ExecutionStats")
+
+            srcPath = "#{directory}/src"
+            srcPathInstr = "#{srcPath}/instructions.cpp"
+            srcPathParams = "#{srcPath}/params.json"
+            codegenPath = "#{directory}/CodeGen"
+            destPath = "Trainer-Generator/."
+            destPathSrc = "Trainer-Generator/src/."
+
+
+            # Copying required files for generating Executions stats            
+            FileUtils.cp("#{srcPathInstr}", "#{destPathSrc}")
+            checkExitstatus("cp src dest ExecutionStats1")
+            FileUtils.cp("#{srcPathParams}", "#{destPath}")
+            checkExitstatus("cp src dest ExecutionStats2")
 
             Dir.chdir('Trainer-Generator/bin') do
 

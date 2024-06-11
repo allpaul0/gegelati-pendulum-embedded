@@ -142,15 +142,6 @@ int main(void)
 	in1 = pendulumEE.modifiedState;
 	pendulumEE_ptr = &pendulumEE;
 
- 	std::cout << "START" << std::endl;  // send (SYN) signal
-
-	int coeff = COEFF_DYNAMIC_OPPENING;
-
-#if TYPE_INT == 1
-    std::cout << "TYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
-#else
-    std::cout << "TYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
-#endif
 
 	// Reset pendulum environment and store the initial conditions
 	pendulumEE.reset(seeds[0]);
@@ -158,12 +149,10 @@ int main(void)
 	initVelocity = pendulumEE.getVelocity();
 
 	/* === INA219 setup === */
-
 	if(INA219_Init(&ina219t, &hi2c1, INA219_DEFAULT_ADDRESS, 3.2768) == 0){
 		std::cout << "Can't access the INA219 sensor, end of program" << std::endl;
 		while(1){}	// Waiting for reset
 	}
-
 	INA219_setConfig(&ina219t, INA219_CONFIG_BADCRES_12BIT | INA219_CONFIG_BVOLTAGERANGE_32V
 								| INA219_CONFIG_GAIN_1_40MV | INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS
 								| INA219_CONFIG_SADCRES_12BIT);	// 0x219f
@@ -180,22 +169,30 @@ int main(void)
 	Cortex_M4_EnableCycleCounter(); /* start counting */
 
 	char buffStart;
+    /* USER CODE END 2 */
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+    /* Infinite loop */
+    /* USER CODE BEGIN WHILE */
 	while (1)
 	{
-
     //synchronization with PC
-		do {
-		  //std::cout << "\tInitial parameter {Angle : " << initAngle
-      //          << ", Velocity : " << initVelocity << "}" << std::endl;
-		  read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
-		  HAL_Delay(1000);  // wait for 1 second
-		}
-		while (buffStart != '\n'); // (ACK) signal is a newline character
+	  do {
+		  uint8_t ch;
+		  HAL_UART_Receive(&huart2, &ch, 0, 0);
+		  HAL_Delay(500);  // wait for 1 second
+	    std::cout << "START" << std::endl;  // send (SYN) signal
+	    read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
+		  HAL_Delay(500);  // wait for 1 second
+	  }
+	  while (buffStart != '\n'); // (ACK) signal is a newline character
+
+	  int coeff = COEFF_DYNAMIC_OPPENING;
+
+#if TYPE_INT == 1
+	  std::cout << "TYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
+#else
+    std::cout << "TYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
+#endif
 
     std::cout << "Seed : " << seed << std::endl;
 
@@ -214,9 +211,9 @@ int main(void)
     executionTimingBench.printResult();
     std::cout << logEnd << std::endl;
     std::cout << "Exiting inference execution time bench" << std::endl;
-  
+
     std::cout << "END" << std::endl;
-	  Cortex_M4_DisableCycleCounter(); /* disable counting if not used any more */
+    Cortex_M4_DisableCycleCounter(); /* disable counting if not used any more */
 
     while(1) {}		// Waiting for reset
 
@@ -224,7 +221,6 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	}
-
 
   /* USER CODE END 3 */
 }

@@ -149,12 +149,8 @@ dirs.each do |d|
         Dir.chdir('Release') do
 
             # Launch the CodeGen            
-            system("./Validation ../../../#{TPG_dir}/#{d}/CodeGen/best_root_pruned.dot #{seed}")
+            system("./Validation ../../../#{TPG_dir}/#{d}/training/best_root_training.dot #{seed}")
             check_exit_status($?.to_i)
-            puts
-            
-            #Dir.mkdir("../../../#{TPG_dir}/#{d}/Validation/#{resultDirPrefix}")
-            #checkExitstatus("mkdir resultPath timestamp")
 
             # Save the results of the CodeGen into the concerned TPG dir
             system("mv Results ../../../#{TPG_dir}/#{d}/validation") #/{resultDirPrefix}
