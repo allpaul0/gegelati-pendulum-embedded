@@ -126,7 +126,7 @@ public:
     /// seeds_NbActionsToTerminal.h. 
     /// Do nbActionsToTerminal actions (until the terminal state is reached)  
     /// Do nbActionsMax if the determinism is lost. 
-    void startInference(int nbActionsMax);
+    void startInference(void);
 
 };
 

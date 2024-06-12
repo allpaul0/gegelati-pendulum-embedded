@@ -100,11 +100,11 @@ void PendulumExecutionEnvironment::doAction(uint64_t& actionID) {
 }
 
 
-void PendulumExecutionEnvironment::startInference(int nbActionsMax){
+void PendulumExecutionEnvironment::startInference(void){
 
-    int idAction = 0;
-    while(idAction < nbActionsMax && idAction != this->nbActionsToTerminal){
 
+    for(int idAction = 0; idAction != this->nbActionsToTerminal; idAction++){
+    	this->currentStep = idAction;
 		uint64_t action = (uint64_t)inferenceTPG();
 		this->doAction(action);
         
@@ -112,8 +112,7 @@ void PendulumExecutionEnvironment::startInference(int nbActionsMax){
 		std::cout << *this << " === idAction : " << i << ", action : " << getActionFromID(action) << std::endl;
 #endif
 
-        idAction++;
-	}
+    }
 
 	this->currentStep = -1;
 }

@@ -18,7 +18,7 @@ void PendulumINA219Monitor::record() {
 
 	uint32_t exit = Cortex_M4_GetCycleCounter(); /* get cycle counter */
 
-	nbcyclesInInterrupt = nbcyclesInInterrupt + (exit-entry);
+	this->nbcyclesInInterrupt = this->nbcyclesInInterrupt + (exit-entry);
 }
 
 void PendulumINA219Monitor::clearHistory(){
