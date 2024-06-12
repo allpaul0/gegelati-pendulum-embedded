@@ -25,7 +25,6 @@ class PendulumINA219Monitor: public INA219Monitor {
 	double initAngle = 0.0;
 
 	double initVelocity = 0.0;
-
 public:
 	/**
 	 * \brief Base constructor.

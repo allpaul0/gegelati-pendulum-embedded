@@ -57,12 +57,18 @@ private:
 
     /// Setter for velocity.
     void setVelocity(double newValue);
+
 public:
     /// Current angle and velocity provided to the LearningAgent :
     /// - currentState[0] --> Current angle of the pendulum in [-M_PI; M_PI]
     /// - currentState[1] --> Current velocity of the pendulum in [-1;1]
     /// This must be public to be exposed to the inference program.
     double currentState[2];
+
+    /// Value used to replace the function LearningEnvironment.isTerminal()
+    /// and therefore avoid useless calculations. Is checked after every action
+    /// realised to make sure the calculation is not done.
+    int nbActionsToTerminal = -1;
 
     #if TYPE_INT == 1
     int modifiedState[2];
@@ -98,6 +104,9 @@ public:
 
     void reset(double initalAngle, double initialVelocity);
 
+    /// Setter for nbActionsToTerminal
+   void setNbActionsToTerminal(int nbActionsToTerminal);
+
 	/**
 	* \brief Get the action from its associated ID.
 	*
@@ -113,9 +122,11 @@ public:
      */
     void doAction(uint64_t& actionID);
 
-    /// Start nbSteps inferences and simulation steps using the code gen TPG.
-    void startInference(int nbSteps);
-
+    /// Start inference using the TPG provided by the CodeGen, the seed provided by 
+    /// seeds_NbActionsToTerminal.h. 
+    /// Do nbActionsToTerminal actions (until the terminal state is reached)  
+    /// Do nbActionsMax if the determinism is lost. 
+    void startInference(int nbActionsMax);
 
 };
 

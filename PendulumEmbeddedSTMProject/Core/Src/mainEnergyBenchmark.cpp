@@ -1,3 +1,4 @@
+
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -60,7 +61,8 @@
 // === Pendulum global access and parameters === */
 
 PendulumExecutionEnvironment* pendulumEE_ptr;
-uint16_t nbActions = 1000;	// Number of actions per inference
+uint16_t nbActionsMax = 1000;	// Number of actions per inference
+uint16_t nbSeeds = NB_SEEDS;
 double initAngle = 0.0;
 double initVelocity = 0.0;
 
@@ -141,7 +143,8 @@ int main(void)
 	PendulumExecutionEnvironment pendulumEE(availableAction);
 	in1 = pendulumEE.modifiedState;
 	pendulumEE_ptr = &pendulumEE;
-
+  
+ 	std::cout << "START" << std::endl;  // send (SYN) signal
 
 	// Reset pendulum environment and store the initial conditions
 	pendulumEE.reset(seeds[0]);
@@ -149,10 +152,12 @@ int main(void)
 	initVelocity = pendulumEE.getVelocity();
 
 	/* === INA219 setup === */
+
 	if(INA219_Init(&ina219t, &hi2c1, INA219_DEFAULT_ADDRESS, 3.2768) == 0){
 		std::cout << "Can't access the INA219 sensor, end of program" << std::endl;
 		while(1){}	// Waiting for reset
 	}
+
 	INA219_setConfig(&ina219t, INA219_CONFIG_BADCRES_12BIT | INA219_CONFIG_BVOLTAGERANGE_32V
 								| INA219_CONFIG_GAIN_1_40MV | INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS
 								| INA219_CONFIG_SADCRES_12BIT);	// 0x219f
@@ -163,57 +168,71 @@ int main(void)
 	// - TIM5, used for timing benches, count each microseconds.
 	// - TIM7, used for energy monitoring count each 0.1 milliseconds and raise an interrupt every 3 milliseconds.
 	PendulumINA219Bench energybench(benchWrapper, &ina219t, &pendulumEE, &htim7, TimeUnit::Milliseconds, 3.f); // current and power measure bench (provides cycle count to make sure the bench is fair)
-	TimingBench executionTimingBench(benchWrapper, &htim5, TimeUnit::Microseconds); // timing bench 
+	TimingBench timingBench(benchWrapper, &htim5, TimeUnit::Microseconds); // timing bench 
 
 	Cortex_M4_InitCycleCounter(); /* enable DWT hardware */
 	Cortex_M4_EnableCycleCounter(); /* start counting */
 
 	char buffStart;
-    /* USER CODE END 2 */
 
-    /* Infinite loop */
-    /* USER CODE BEGIN WHILE */
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
 	while (1)
 	{
-    //synchronization with PC
-	  do {
-		  uint8_t ch;
-		  HAL_UART_Receive(&huart2, &ch, 0, 0);
-		  HAL_Delay(500);  // wait for 1 second
-	    std::cout << "START" << std::endl;  // send (SYN) signal
-	    read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
-		  HAL_Delay(500);  // wait for 1 second
-	  }
-	  while (buffStart != '\n'); // (ACK) signal is a newline character
 
-	  int coeff = COEFF_DYNAMIC_OPPENING;
+    //synchronization with PC
+		do {
+		  //std::cout << "\tInitial parameter {Angle : " << initAngle
+      //          << ", Velocity : " << initVelocity << "}" << std::endl;
+		  read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
+		  HAL_Delay(1000);  // wait for 1 second
+		}
+		while (buffStart != '\n'); // (ACK) signal is a newline character
+    
+    int coeff = COEFF_DYNAMIC_OPPENING;
 
 #if TYPE_INT == 1
-	  std::cout << "TYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
+    std::cout << "TYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
 #else
     std::cout << "TYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
 #endif
 
-    std::cout << "Seed : " << seed << std::endl;
+    for(int idSeed=0; idSeed<nbSeeds; idSeed++){
 
-    /* Energy consumption measurements */
-    std::cout << "Starting energy bench" << std::endl;
-    std::cout << logStart << std::endl;
-    energybench.startBench();
-    energybench.printResult();
-    std::cout << logEnd << std::endl;
-    std::cout << "Exiting energy bench" << std::endl;
+      Cortex_M4_ResetCycleCounter();  /* Reset cycle counter */
+      Cortex_M4_EnableCycleCounter(); /* start counting */
 
-    /* Execution time measurement without energy measurement interruptions */
-    std::cout << "Starting inference execution time bench" << std::endl;
-    std::cout << logStart << std::endl;
-    executionTimingBench.startBench();
-    executionTimingBench.printResult();
-    std::cout << logEnd << std::endl;
-    std::cout << "Exiting inference execution time bench" << std::endl;
+      pendulumEE_ptr->reset(seeds[idSeed]);
+      pendulumEE_ptr->setNbActionsToTerminal(nbActionsToTerminal[idSeed]);
+
+      std::cout << "Seed : " << seed << std::endl;
+      std::cout << "nbActionsToTerminal : " << nbActionsToTerminal << std::endl;
+
+      /* Energy consumption measurements */
+      std::cout << "Starting energy bench" << std::endl;
+      std::cout << logStart << std::endl;
+      energybench.startBench();
+      energybench.printResult();
+      std::cout << logEnd << std::endl;
+      std::cout << "Exiting energy bench" << std::endl;
+
+      pendulumEE_ptr->reset(seeds[idSeed]);
+      pendulumEE_ptr->setNbActionsToTerminal(nbActionsToTerminal[idSeed]);
+
+      /* Execution time measurement without energy measurement interruptions */
+      std::cout << "Starting inference execution time bench" << std::endl;
+      std::cout << logStart << std::endl;
+      timingBench.startBench();
+      timingBench.printResult();
+      std::cout << logEnd << std::endl;
+      std::cout << "Exiting inference execution time bench" << std::endl;
+
+      Cortex_M4_DisableCycleCounter(); /* disable counting if not used any more */
+    }
 
     std::cout << "END" << std::endl;
-    Cortex_M4_DisableCycleCounter(); /* disable counting if not used any more */
 
     while(1) {}		// Waiting for reset
 
@@ -276,9 +295,7 @@ void SystemClock_Config(void)
 
 /* Function for benchmarks */
 void benchWrapper(void){
-  // set similar starting conditions as Energy consumption measurements
-  pendulumEE_ptr->reset(initAngle, initVelocity);
-  pendulumEE_ptr->startInference((int)nbActions);
+  pendulumEE_ptr->startInference(nbActionsMax);
 }
 
 /* USER CODE END 4 */

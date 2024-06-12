@@ -25,9 +25,9 @@ void storeToCProgram(const std::string& filename, const unsigned int* seeds, con
     file << "#ifndef SEEDS_H\n"
         << "#define SEEDS_H\n\n"
 
-        << "#define NB_SEED " << nbValues << "\n\n"
+        << "#define NB_SEEDS " << nbValues << "\n\n"
 
-        << "static const unsigned int seeds[NB_SEED] = {";
+        << "static const unsigned int seeds[NB_SEEDS] = {";
 
     // write content of seeds array
     size_t i;
@@ -35,7 +35,7 @@ void storeToCProgram(const std::string& filename, const unsigned int* seeds, con
         file << seeds[i] << ", "; 
     }
     file << seeds[i] << "};\n"
-        << "static const int nbActionsToTerminal[NB_SEED] = {";
+        << "static const int nbActionsToTerminal[NB_SEEDS] = {";
 
     // write content of nbActionsToTerminal array
     for (i = 0; i < nbValues-1; ++i) {

@@ -5,7 +5,6 @@ require 'fileutils'
 require 'optparse'
 require 'json'
 require 'timeout'
-
 require 'serialport'
 
 require_relative 'scripts/logToJson'
@@ -72,13 +71,50 @@ def getValidDirectories (dir, requiredFiles)
 end
 
 # Exit the script with an error message if the last call to a subprocess returns an exit code different from 0
-def checkExitstatus(error_message)
+def check_exit_status(error_message)
     if  $?.nil? || $?.exitstatus != 0
         puts "Exit point: #{error_message}"
         exit 1
     end
 end
 
+def synchronize_with_stm32(serialPortPath, resultPath, logFile, verbose)
+    attempts = 0
+    max_attempts = 2
+
+    while attempts < max_attempts
+        attempts += 1
+        first_attempt = (attempts == 1)
+
+        SerialPort.open(serialPortPath, baud = 115200) do |serialport|
+
+            begin
+                Timeout.timeout(2) do
+                    if first_attempt
+                        until (serialport.readline == "START\r\n") do end   # Waiting for STM32 to send the first signal (SYN)
+                    end
+                end
+                serialport << "\n"  # Sending back to the STM32 a newline character (ACK), which will start the inference
+                return true  # Exit the method once synchronization is successful
+            rescue Timeout::Error
+                if attempts < max_attempts
+                    puts "\033[0;33mSynchronization failed. Retrying...\033[0m"
+                else
+                    puts "\033[0;31mSynchronization failed. Timed out after #{attempts} attempts.\033[0m"
+                    puts "\033[0;31mDeleting generated results dir.\033[0m"
+
+                    # Delete the generated incomplete directory since its presence will be an obstacle for 
+                    # the rest of the script and it has no meaningful information
+                    logFile.close
+                    system("rm #{resultPath}/energy.log")
+                    system("rmdir #{resultPath}")
+                    exit 1
+                end
+            end
+            
+        end
+    end
+end
 
 # =====[ Program arguments managment ]=====
 
@@ -164,16 +200,16 @@ if stages["CodeGen"]
     puts "\033[1;32m=====[ CodeGen stage ]=====\033[0m"
 
     system("./scripts/start_code_generation.rb #{verbose} #{TPG_dir}")
-    checkExitstatus("start_generation")
+    check_exit_status("start_generation")
 
 end
 
 
-# =====[ Measurments stage ]=====
+# =====[ Measurements stage ]=====
 
 if stages["Measures"]
 
-    puts "\033[1;32m=====[ Measurments stage ]=====\033[0m"
+    puts "\033[1;32m=====[ Measurements stage ]=====\033[0m"
 
     requiredFiles = ["CodeGen/src/TPGGraph.c", "CodeGen/src/TPGGraph.h", "CodeGen/src/TPGPrograms.c", "CodeGen/src/TPGPrograms.h", "PreCalcul/seeds_nbActionsToTerminal.h"]
     valid_TPG_directories = getValidDirectories("#{TPG_dir}", requiredFiles)
@@ -195,11 +231,11 @@ if stages["Measures"]
 
     # Check if the new path is already included in the PATH variable
     unless existing_path.split(File::PATH_SEPARATOR).include?(new_path)
-    # Add the new path before the existing PATH variable
-    ENV["PATH"] = "#{new_path}#{File::PATH_SEPARATOR}#{existing_path}"
+        # Add the new path before the existing PATH variable
+        ENV["PATH"] = "#{new_path}#{File::PATH_SEPARATOR}#{existing_path}"
     end
-
-    # Compiling, flashing on STM32, do inference and analyse results for each TPG
+    
+    # Compiling, flashing on STM32, do inference and analyze results for each TPG
 
     currentAvgs = {}
     powerAvgs = {}
@@ -208,170 +244,123 @@ if stages["Measures"]
     totalEnergyConsumption = {}
     ratioInterruptCompute = {}
 
-    
-    valid_TPG_directories.each { |tpgDirName|
-
+    valid_TPG_directories.each do |tpgDirName|
+        
         puts "\033[1;33m#{tpgDirName}\033[0m"
-
+      
         # === Moving file for cross-compilation ===
-
+      
         # Source files
         dest = "PendulumEmbeddedSTMProject/Core/Src/Pendulum"
-        ["TPGGraph.c", "TPGPrograms.c"].each { |f|
-            
+        ["TPGGraph.c", "TPGPrograms.c"].each do |f|
             src = "#{tpgDirName}/CodeGen/src/#{f}"
             FileUtils.cp(src, dest)
-            checkExitstatus("cp src dest Measures")
-        }
-
+            check_exit_status("cp src dest Measures")
+        end
+      
         # Header files
         dest = "PendulumEmbeddedSTMProject/Core/Inc/Pendulum"
-        ["TPGGraph.h", "TPGPrograms.h"].each { |f|
-
+        ["TPGGraph.h", "TPGPrograms.h"].each do |f|
             src = "#{tpgDirName}/CodeGen/src/#{f}"
             FileUtils.cp(src, dest)
-            checkExitstatus("cp src dest Measures")
-        }
-
+            check_exit_status("cp src dest Measures")
+        end
+      
         FileUtils.cp("#{tpgDirName}/PreCalcul/seeds_nbActionsToTerminal.h", "PendulumEmbeddedSTMProject/Core/Inc/Pendulum")
-
+      
         # === Compiling executable ===
-
+      
         seed = sameSeed ? common_seed : rand(C_UINT_MAX)
-
+      
         # Set the seed value and inform the compiler whether we are using INT or not
-        if tpgDirName.include?("int")
-            type_int = 1
-        else
-            type_int = 0
-        end
-        
+        type_int = tpgDirName.include?("int") ? 1 : 0
+      
         system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=0/g' {} +")
-        checkExitstatus("find PendulumEmbeddedSTMProject sed -i TYPE_INT")
-
-        # display changes
-        #system("find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- \"-DTYPE_INT=[0-9][0-9]*\" {} +")
-
+        check_exit_status("find PendulumEmbeddedSTMProject sed -i TYPE_INT")
+      
         puts "\tCompilation of the embedded binary"
-    
-        # No matter the TPG, the program on the STM32 will always initialise itself the same 
-        # way and its random number generator too.
-        # We want the TPGs to have a random initial state, so the seed used to initialise 
-        # it is geerated via this ruby script.
-        
-        embedded_binary_compilation_string = "make clean -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench |make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench"
-
-        if(!verbose)
-            embedded_binary_compilation_string += " > /dev/null 2>&1"
-        end
-
+      
+        embedded_binary_compilation_string = "make clean -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench" 
+        embedded_binary_compilation_string += " > /dev/null 2>&1" unless verbose
+        embedded_binary_compilation_string +=" && make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench"
+        embedded_binary_compilation_string += " > /dev/null 2>&1" unless verbose
+      
         system(embedded_binary_compilation_string)
-
-        checkExitstatus("make all -C CodeGen")
-    
+        check_exit_status("make all -C CodeGen")
+      
         # Moving .elf binary to the current TPG subdirectory
         srcElf = "PendulumEmbeddedSTMProject/ReleaseEnergyBench/PendulumEmbeddedSTMProject.elf"
         destElf = "#{tpgDirName}/CodeGen"
         FileUtils.cp(srcElf, destElf)
-    
-    
-        # === Loading program on STM32 flash memory ===
-
-        #puts "\033[1;32m\t- Loading the binary\033[0m"
+      
+        # === Loading program on STM32 flash memory ===
+      
         puts "\tLoading the binary"
-
-        # Loading is done using the program STM32_Programer_CLI
+      
         embedded_binary_loading_string = "STM32_Programmer_CLI -c port=SWD -w #{destElf}/PendulumEmbeddedSTMProject.elf -rst"
-        if(!verbose)
-            embedded_binary_loading_string += " > /dev/null 2>&1"
-        end
-        system(embedded_binary_loading_string) # c: connect | rst: reset system
-        checkExitstatus("STM32_Programmer_CLI")
-    
-
+        embedded_binary_loading_string += " > /dev/null 2>&1" unless verbose
+        system(embedded_binary_loading_string)
+        check_exit_status("STM32_Programmer_CLI")
+      
         # === Start serial interface and inference ===
-
-        #puts "\033[1;32m\t- Inference on the board\033[0m"
+      
         puts "\tInference on the board"
-
+      
         # Create subdirectory to save results
         inferencePath = "#{tpgDirName}/inference"
-        unless Dir.exist?("#{inferencePath}")
-            Dir.mkdir(inferencePath)
-        end
-        resultPath = "#{inferencePath}/#{resultDirPrefix}" # a timestamp marks the identity of the folder containing the data
+        Dir.mkdir(inferencePath) unless Dir.exist?(inferencePath)
+      
+        resultPath = "#{inferencePath}/#{resultDirPrefix}"
         FileUtils.mkdir(resultPath)
-        checkExitstatus("mkdir resultPath timestamp")
-
+        check_exit_status("mkdir resultPath timestamp")
+      
         # energy.log stores messages received from the STM32 board
         logPath = "#{resultPath}/energy.log"
         logFile = File.open(logPath, "w+");
 
-        SerialPort.open(serialPortPath, baud = 115200) { |serialport|
+        # Main execution starts here
+        synchronize_with_stm32(serialPortPath, resultPath, logFile, verbose)
 
-            # The ruby script synchronizes with the STM32 using a periodic retry on the board
-
-            begin
-                Timeout.timeout(10) do
-                until (serialport.readline == "START\r\n") do end   # Waiting for STM32 to send the first signal (SYN)
-                serialport << "\n"  # Sending back to the STM32 a newline character (ACK), which will start the inference
-
-                continue = true
-                while continue
-                    line = serialport.readline
+        continue = true
         
-                    if(verbose)
-                        puts line   
-                    end
-                    logFile << line
-        
-                    continue = (line != "END\r\n")
-                end
-            end
-            rescue Timeout::Error
-                puts "\033[0;31mSynchronization failed. Timed out after 10 seconds.\033[0m"
-                puts "\033[0;31mDeleting generated results dir.\033[0m"
+        SerialPort.open(serialPortPath, baud = 115200) do |serialport|
+            while continue
+                line = serialport.readline
                 
-                # Delete the generated incomplete directory since its presence will be an obstacle for 
-                # the rest of the script and it has no meaningfull informations
-                logFile.close
-                system("rm #{resultPath}/energy.log")
-                system("rmdir #{resultPath}")
-                exit 1
+                if verbose
+                    puts line   
+                end
+                logFile << line
+                
+                continue = (line != "END\r\n")
             end
-        }
+        end
 
         logFile.close
     
-    
-        # === Extract and export meaningfull data from log file ===
-    
+        # === Extract and export meaningful data from log file ===
+      
         dataPath = "#{resultPath}/energy_data.json"
         dataJson = logToJson(logPath, dataPath, seed)
-
+      
         currentAvgs[tpgDirName] = dataJson["summary"]["averageCurrent"]
         powerAvgs[tpgDirName] = dataJson["summary"]["averagePower"]
         executionTimeAvgs[tpgDirName] = dataJson["summary"]["executionTavg"]
         totalEnergyConsumption[tpgDirName] = dataJson["summary"]["totalEnergy"]
         ratioInterruptCompute[tpgDirName] = dataJson["summary"]["ratioInterruptCompute"]
-    }
-
-
-
+    end
+      
     # Displaying global results
-
     puts "\033[1;32m=====[ Measurement summary ]=====\033[0m"
-
-    valid_TPG_directories.sort!.each { |tpgDirName|
-        #puts "#{tpgDirName}"
+    
+    valid_TPG_directories.sort!.each do |tpgDirName|
         puts "\033[1;33m#{tpgDirName}\033[0m"
         puts "\tAverage current : #{(currentAvgs[tpgDirName] * 1000).round(4)} mA"
         puts "\tAverage power : #{powerAvgs[tpgDirName].round(4)} W"
         puts "\tAverage step execution time : \033[0;35m#{executionTimeAvgs[tpgDirName]}\033[0m"
         puts "\tTotal energy consumption : \033[1;32m#{(totalEnergyConsumption[tpgDirName] * 1000).round(4)} mJ\033[0m"
         puts "\tRatio Measure/Compute : #{ratioInterruptCompute[tpgDirName]}"
-    }
-
+    end
 end
 
 
@@ -402,9 +391,9 @@ if stages["Analysis"]
 
             # Copying required files for generating Executions stats            
             FileUtils.cp("#{srcPathInstr}", "#{destPathSrc}")
-            checkExitstatus("cp src dest ExecutionStats1")
+            check_exit_status("cp src dest ExecutionStats1")
             FileUtils.cp("#{srcPathParams}", "#{destPath}")
-            checkExitstatus("cp src dest ExecutionStats2")
+            check_exit_status("cp src dest ExecutionStats2")
 
             Dir.chdir('Trainer-Generator/bin') do
 
@@ -412,10 +401,10 @@ if stages["Analysis"]
                     # Specify that we are training on int data type
                     # the data needs to be scaled accordingly
                     system("cmake ExecutionStats .. -DTYPE_INT=1 > /dev/null 2>&1")
-                    checkExitstatus("cmake -DTYPE_INT=1 ..")
+                    check_exit_status("cmake -DTYPE_INT=1 ..")
                 else
                     system("cmake -DTYPE_INT=0 .. > /dev/null 2>&1")
-                    checkExitstatus("cmake ExecutionStats -DTYPE_INT=0")
+                    check_exit_status("cmake ExecutionStats -DTYPE_INT=0")
                 end
 
 
@@ -425,7 +414,7 @@ if stages["Analysis"]
                     execution_stats_compilation_string += " > /dev/null 2>&1"
                 end
                 system(execution_stats_compilation_string)
-                checkExitstatus("make ExecutionStats")
+                check_exit_status("make ExecutionStats")
             end
 
                 # Get initial values from results of the energy bench
@@ -435,7 +424,7 @@ if stages["Analysis"]
                 # Start replay and execution stats export for 1000 inferences
 
                 system("./Trainer-Generator/bin/Release/ExecutionStats #{codegenPath}/best_root_pruned.dot #{energyData["metadata"]["startAngle"]} #{energyData["metadata"]["startVelocity"]}")
-                checkExitstatus("./ExecutionStats")
+                check_exit_status("./ExecutionStats")
 
                 # Move executions_stats.json to result directory
                 FileUtils.mv("#{codegenPath}/executionStats.json", "#{d}")
@@ -455,5 +444,5 @@ if stages["PlotResults"]
         execution_stats_string += " --show"        
     end
     system(execution_stats_string)
-    checkExitstatus("julia generate_energy_plots.jl")
+    check_exit_status("julia generate_energy_plots.jl")
 end

@@ -30,13 +30,13 @@ picocom.log
 *Manifest.toml
 
 # Project for training TPG, genrating codegen and analyse execution with GEGELATI
-Trainer-Generator/bin/*
 */cmake-build-release
 */cmake-build-debug
 */.idea
+Trainer-Generator/bin/*
+Trainer-Generator/bin_debug
 Trainer-Generator/CMakeFiles/
 Trainer-Generator/Makefile
-Trainer-Generator/bin*
 Trainer-Generator/cmake_install.cmake
 Trainer-Generator/params.json
 Trainer-Generator/src/instructions.cpp

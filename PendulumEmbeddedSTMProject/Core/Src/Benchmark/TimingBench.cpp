@@ -20,7 +20,6 @@ void TimingBench::startBench(){
 	this->attemptResults.clear();
 
 	for(int i = 0; i < this->nbAttempts; i++){
-		
 
 		// Reset counter and start timer
 		__HAL_TIM_SET_COUNTER(this->tim, (int32_t)(0x0));

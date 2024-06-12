@@ -49,6 +49,10 @@ void PendulumExecutionEnvironment::setVelocity(double newValue) {
     this->modifiedState[1] = newValue * COEFF_DYNAMIC_OPPENING;
 }
 
+void PendulumExecutionEnvironment::setNbActionsToTerminal(int nbActionsToTerminal) {
+    this->nbActionsToTerminal = nbActionsToTerminal;
+}
+
 double PendulumExecutionEnvironment::getAngle() const {
     return this->currentState[0];
 }
@@ -96,16 +100,19 @@ void PendulumExecutionEnvironment::doAction(uint64_t& actionID) {
 }
 
 
-void PendulumExecutionEnvironment::startInference(int nbSteps){
+void PendulumExecutionEnvironment::startInference(int nbActionsMax){
 
-	for(int i = 0; i < nbSteps; i++){
-		this->currentStep = i;
+    int idAction = 0;
+    while(idAction < nbActionsMax && idAction != this->nbActionsToTerminal){
+
 		uint64_t action = (uint64_t)inferenceTPG();
 		this->doAction(action);
-
+        
 #ifdef PENDULUM_TRACE
-		std::cout << *this << " === Step " << i << ", action : " << getActionFromID(action) << std::endl;
+		std::cout << *this << " === idAction : " << i << ", action : " << getActionFromID(action) << std::endl;
 #endif
+
+        idAction++;
 	}
 
 	this->currentStep = -1;
