@@ -1,118 +1,168 @@
 require 'json'
+require 'descriptive_statistics'
 
-##
-#   Parse a energy measurment log file and export data in a json file, with a few other information.
-#
-#   **logPath** path of the parsed .log file.
-#   **jsonPath** path of the json file to be written.
-#   **seed** the seed used for the measurement in the .log file, or nil if not specified.
-#
-#   **Return :** the Hash used to generate the json file.
-def logToJson(logPath, jsonPath, seed=nil)
-    # Format the log file from a energy measurment to a json file, easily parsable by any language.
-
-    logStart = "##### Log Start #####"
-    logEnd = "##### Log End #####"
+def logToJson(logPath, jsonPath, input_seed=nil)
+    logStartEnergy = "##### Log Start Energy #####"
+    logStartTiming = "##### Log Start Timing #####"
+    logEndEnergy = "##### Log End Energy #####"
+    logEndTiming = "##### Log End Timing #####"
 
     floatRegex = /-?\d+\.?\d*/
     integerRegex = /-?\d+/
     textRegex = /[a-zA-Z]+/
 
     dataLine = /(#{integerRegex})\t(#{floatRegex})\t(#{floatRegex})/
+    
     paramLine = /dataTimeUnit : (#{textRegex})\tdataTimerMultiplier : (#{floatRegex})\tStartAngle : (#{floatRegex})\tStartVelocity : (#{floatRegex})/
     headerLine = /Step\tCurrent\tPower/
     executionTimingLine = /\=\=\= T_(#{textRegex}) : (#{floatRegex}) (#{textRegex})/
-    cyclesLine= /\=\=\= C_(#{textRegex}) : (#{floatRegex})(( #{textRegex})|%)/
+    cyclesLine = /\=\=\= C_(#{textRegex}) : (#{floatRegex})(( #{textRegex})|%)/
 
+    jsonHash = {"samples" => [], "summary" => {}}
+    current_sample = nil
+    nbSamples = nil
+    nbIterationsFunc = nil
+    seed = nil
 
-    jsonHash = {"metadata" => {}, "summary" => {}, "step" => [], "current" => [], "power" => [] }
-    skipLine = false
-
-    # Parsing energy.log
-    File.open(logPath).each_line { |line|
-        
-        if skipLine
-            # Not in a log section at the moment
-            skipLine = !(line == logStart)
-        elsif line == logEnd
-            # True if we reached the end of the log section
-            skipLine = false;
+    File.open(logPath).each_line do |line|
+        if line.include?(logStartEnergy)
+            current_sample = {"step" => [], "current" => [], "power" => []}
+        elsif line.include?(logEndTiming)
+            jsonHash["samples"] << current_sample  
         else
-            # Parsing time
-            
             case line
             when paramLine
-                jsonHash["metadata"]["dataTimeUnit"] = $1
-                jsonHash["metadata"]["dataTimeMultiplier"] = $2.to_f
-                jsonHash["metadata"]["startAngle"] = $3.to_f
-                jsonHash["metadata"]["startVelocity"] = $4.to_f
+                if current_sample
+                    current_sample["dataTimeUnit"] = $1
+                    current_sample["dataTimeMultiplier"] = $2.to_f
+                    current_sample["startAngle"] = $3.to_f
+                    current_sample["startVelocity"] = $4.to_f
+                end
             when headerLine
-                # Skip header
                 next
             when dataLine
-                jsonHash["step"] << $1.to_i
-                jsonHash["current"] << $2.to_f
-                jsonHash["power"] << $3.to_f
+                if current_sample
+                    current_sample["step"] << $1.to_i
+                    current_sample["current"] << $2.to_f
+                    current_sample["power"] << $3.to_f
+                end
             when cyclesLine
-                variable_name = $1
-                value = $2
-                unit = $3
-                jsonHash["summary"]["#{variable_name}"] = "#{value}#{unit}"
+                if current_sample
+                    variable_name = $1
+                    value = $2
+                    unit = $3
+                    current_sample["#{variable_name}"] = "#{value}"
+                end
             when executionTimingLine
-                timing_name = $1
-                value = $2
-                unit = $3
-                jsonHash["summary"]["executionT#{timing_name}"] = "#{value.sub(/.?0*$/, '')} #{unit}"
+                if current_sample
+                    timing_name = $1
+                    value = $2
+                    unit = $3
+                    current_sample["executionT#{timing_name}"] = "#{value.sub(/.?0*$/, '')} #{unit}"
+                end
+            else
+                # Parse NB_SAMPLES and NB_ITERATIONS_FUNC
+                if line.include?("NB_SAMPLES")
+                    nbSamples = line.split(":")[1].strip.to_i
+                elsif line.include?("NB_ITERATIONS_FUNC")
+                    nbIterationsFunc = line.split(":")[1].strip.to_i
+                elsif line.include?("Seed")
+                    seed = line.split(":")[1].strip.to_i
+                end
             end
-
         end
-
-    }.close
-
-
-    # Remove invalid data
-
-    toRemove = []
-
-    jsonHash["step"].each.with_index { |s, idx|
-        toRemove << idx if s < 0
-    }
-
-    toRemove.each { |delete_index|
-        jsonHash["step"].delete_at(delete_index)
-        jsonHash["current"].delete_at(delete_index)
-        jsonHash["power"].delete_at(delete_index)
-    }
-
-    # Compute additional information
-
-    jsonHash["summary"]["averageCurrent"] = jsonHash["current"].sum / jsonHash["current"].length
-    jsonHash["summary"]["averagePower"] = jsonHash["power"].sum / jsonHash["power"].length
-    
-    timeUnit = jsonHash["metadata"]["dataTimeUnit"]
-    timeMultiplier = jsonHash["metadata"]["dataTimeMultiplier"]
-
-    measureStepTime = timeMultiplier  # In seconds
-
-    case timeUnit
-    when "ms"
-        measureStepTime = timeMultiplier / 10**3
-    when "us"
-        measureStepTime = timeMultiplier / 10**6
-    when "s"    # Do nothing
-    else
-        puts "Unknown time unit, default to s"
     end
 
-    jsonHash["summary"]["totalEnergy"] = jsonHash["power"].sum { |p| p * measureStepTime } # In J
+    jsonHash["samples"] << current_sample if current_sample
 
+    dataTimeUnit = nil
+    dataTimeMultiplier = nil
+    nbCyclesInterrupts = []
+    nbCyclesComputes = []
+    ratioInterruptComputes = []
+    executionTavgs = []
+    totalEnergies = []
 
-    jsonHash["metadata"]["seed"] = seed
+    jsonHash["samples"].each do |section|
+        next unless section.is_a?(Hash) && !section["current"].nil?
 
+        toRemove = []
+        section["step"].each.with_index { |s, idx| toRemove << idx if s < 0 }
+        toRemove.each { |delete_index|
+            section["step"].delete_at(delete_index)
+            section["current"].delete_at(delete_index)
+            section["power"].delete_at(delete_index)
+        }
 
+        section["averageCurrent"] = section["current"].mean
+        section["averagePower"] = section["power"].mean
+        section["stdDevCurrent"] = section["current"].standard_deviation
+        section["stdDevPower"] = section["power"].standard_deviation
+
+        timeUnit = section["dataTimeUnit"]
+        timeMultiplier = section["dataTimeMultiplier"]
+        measureStepTime = timeMultiplier
+
+        case timeUnit
+        when "ms"
+            measureStepTime = timeMultiplier / 1000.0
+        when "us"
+            measureStepTime = timeMultiplier / 1000000.0
+        when "s"
+            # Do nothing, already in seconds
+        else
+            puts "Unknown time unit '#{timeUnit}', defaulting to seconds."
+        end
+
+        section["energyConsumption"] = section["power"].sum * measureStepTime
+
+        dataTimeUnit ||= section["dataTimeUnit"]
+        dataTimeMultiplier ||= section["dataTimeMultiplier"]
+        nbCyclesInterrupts << section["nbcyclesInterrupt"]
+        nbCyclesComputes << section["nbcyclesCompute"]
+        ratioInterruptComputes << section["ratioInterruptCompute"].to_f
+        executionTavgs << section["executionTavg"].to_f if section["executionTavg"]
+        totalEnergies << section["energyConsumption"]
+
+        section.delete("step")
+        section.delete("current")
+        section.delete("power")
+    end
+
+     # Get the unit from executionTavg if available
+     executionUnit = nil
+     if jsonHash["samples"].first && jsonHash["samples"].first["executionTavg"]
+         executionUnit = jsonHash["samples"].first["executionTavg"].split.last
+     end
+ 
+
+    # summary represents the average of each sample
+    jsonHash["summary"] = {
+        "Seed" => seed,
+        "nbSamples" => nbSamples,
+        #"nbIterationsFunc" => nbIterationsFunc,
+        "dataTimeUnit" => dataTimeUnit,
+        "dataTimeMultiplier" => dataTimeMultiplier,
+        #"NbCyclesInterrupt" => nbCyclesInterrupts.mean,
+        #"stdDevNbCyclesInterrupt" => nbCyclesInterrupts.standard_deviation,
+        #"NbCyclesCompute" => nbCyclesComputes.mean,
+        #"stdDevNbCyclesCompute" => nbCyclesComputes.standard_deviation,
+        "ratioInterruptCompute" => ratioInterruptComputes.mean,
+        "stdDevRatioInterruptCompute" => ratioInterruptComputes.standard_deviation,
+        "singleInstructionExecutionTime" => "#{(executionTavgs.mean/nbIterationsFunc).round(4)} #{executionUnit}",
+        "sIstdDevExecutionTime" => executionTavgs.standard_deviation/nbIterationsFunc,
+        "singleInstructionEnergyConsumption" => totalEnergies.mean/nbIterationsFunc,
+        "sIstdDevEnergyConsumption" => totalEnergies.standard_deviation/nbIterationsFunc,
+        "ExecutionTime" => "#{executionTavgs.mean} #{executionUnit}",
+        "stdDevExecutionTime" => executionTavgs.standard_deviation,
+        "EnergyConsumption" => totalEnergies.mean,
+        "stdDevEnergyConsumption" => totalEnergies.standard_deviation
+    }
+
+    # Clear the samples from jsonHash
+    # jsonHash.delete("samples")
 
     File.write(jsonPath, JSON.pretty_generate(jsonHash))
 
-    jsonHash    # Return to caller
-
+    jsonHash
 end

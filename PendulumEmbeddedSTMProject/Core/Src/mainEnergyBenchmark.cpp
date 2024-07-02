@@ -37,7 +37,6 @@
 #include "PendulumINA219Monitor.h"
 #include "ina219.h"
 #include "TimeUnit.h"
-#include "seeds_nbActionsToTerminal.h"
 
 /* USER CODE END Includes */
 
@@ -47,6 +46,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define NBMEASURES 10
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,14 +62,18 @@
 // === Pendulum global access and parameters === */
 
 PendulumExecutionEnvironment* pendulumEE_ptr;
-uint16_t nbActions = 1000;	// Number of actions per inference
+uint16_t nbActions = 1;	// Number of actions per inference
 double initAngle = 0.0;
 double initVelocity = 0.0;
 
 // === Measurements and log ===
 INA219_t ina219t;
-const char logStart[] = "##### Log Start #####";
-const char logEnd[] = "##### Log End #####";
+const char logStartEnergy[] = "##### Log Start Energy #####";
+const char logEndEnergy[] = "##### Log End Energy #####";
+const char logStartTiming[] = "##### Log Start Timing #####";
+const char logEndTiming[] = "##### Log End Timing #####";
+
+
 
 // === TPG ===
 
@@ -144,7 +150,7 @@ int main(void)
 
 
 	// Reset pendulum environment and store the initial conditions
-	pendulumEE.reset(seeds[0]);
+	pendulumEE.reset(seed);
 	initAngle = pendulumEE.getAngle();
 	initVelocity = pendulumEE.getVelocity();
 
@@ -177,14 +183,10 @@ int main(void)
 	{
     //synchronization with PC
 	  do {
-		  uint8_t ch;
-		  HAL_UART_Receive(&huart2, &ch, 0, 0);
-		  HAL_Delay(500);  // wait for 1 second
-	    std::cout << "START" << std::endl;  // send (SYN) signal
-	    read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
-		  HAL_Delay(500);  // wait for 1 second
-	  }
-	  while (buffStart != '\n'); // (ACK) signal is a newline character
+		  read(STDIN_FILENO, &buffStart, sizeof(char)); // receive (ACK) signal
+		  HAL_Delay(1000);  // wait for 1 second
+		}
+		while (buffStart != '\n'); // (ACK) signal is a newline character
 
 	  int coeff = COEFF_DYNAMIC_OPPENING;
 
@@ -194,25 +196,25 @@ int main(void)
     std::cout << "TYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
 #endif
 
-    std::cout << "Seed : " << seed << std::endl;
+    for(int iMeasure=0; iMeasure<10; iMeasure++){
 
-    /* Energy consumption measurements */
-    std::cout << "Starting energy bench" << std::endl;
-    std::cout << logStart << std::endl;
-    energybench.startBench();
-    energybench.printResult();
-    std::cout << logEnd << std::endl;
-    std::cout << "Exiting energy bench" << std::endl;
+      Cortex_M4_ResetCycleCounter();  /* Reset cycle counter */
+      std::cout << "Seed : " << seed << std::endl;
 
-    /* Execution time measurement without energy measurement interruptions */
-    std::cout << "Starting inference execution time bench" << std::endl;
-    std::cout << logStart << std::endl;
-    executionTimingBench.startBench();
-    executionTimingBench.printResult();
-    std::cout << logEnd << std::endl;
-    std::cout << "Exiting inference execution time bench" << std::endl;
+      /* Energy consumption measurements */
+      std::cout << logStartEnergy << std::endl;
+      energybench.startBench();
+      energybench.printResult();
+      std::cout << logEndEnergy << std::endl;
 
+      /* Execution time measurement without energy measurement interruptions */
+      std::cout << logStartTiming << std::endl;
+      executionTimingBench.startBench();
+      executionTimingBench.printResult();
+      std::cout << logEndTiming << std::endl;
+    }
     std::cout << "END" << std::endl;
+
     Cortex_M4_DisableCycleCounter(); /* disable counting if not used any more */
 
     while(1) {}		// Waiting for reset

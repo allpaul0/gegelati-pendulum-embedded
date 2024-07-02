@@ -41,6 +41,7 @@ Trainer-Generator/cmake_install.cmake
 Trainer-Generator/params.json
 Trainer-Generator/src/instructions.cpp
 Trash
+scripts/python/*
 
 # Others
 .vscode/
