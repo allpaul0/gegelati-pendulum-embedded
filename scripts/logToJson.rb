@@ -1,6 +1,8 @@
 require 'json'
 require 'descriptive_statistics'
 
+# Units by default are Watts for power and Amperes for current
+
 def logToJson(logPath, jsonPath, input_seed=nil)
     logStartEnergy = "##### Log Start Energy #####"
     logStartTiming = "##### Log Start Timing #####"
@@ -81,7 +83,11 @@ def logToJson(logPath, jsonPath, input_seed=nil)
     nbCyclesComputes = []
     ratioInterruptComputes = []
     executionTavgs = []
+    singleInstructionExectionTavgs = []
     totalEnergies = []
+    energyConsumptionUnit = nil
+    singleInstructionEnergies = []
+    singleInstructionExecutionTimeUnit = nil
 
     jsonHash["samples"].each do |section|
         next unless section.is_a?(Hash) && !section["current"].nil?
@@ -98,6 +104,7 @@ def logToJson(logPath, jsonPath, input_seed=nil)
         section["averagePower"] = section["power"].mean
         section["stdDevCurrent"] = section["current"].standard_deviation
         section["stdDevPower"] = section["power"].standard_deviation
+        section["sumPower"] = section["power"].sum
 
         timeUnit = section["dataTimeUnit"]
         timeMultiplier = section["dataTimeMultiplier"]
@@ -114,7 +121,9 @@ def logToJson(logPath, jsonPath, input_seed=nil)
             puts "Unknown time unit '#{timeUnit}', defaulting to seconds."
         end
 
+        # E=Sum of power values * Measurement interval
         section["energyConsumption"] = section["power"].sum * measureStepTime
+        energyConsumptionUnit = "J"
 
         dataTimeUnit ||= section["dataTimeUnit"]
         dataTimeMultiplier ||= section["dataTimeMultiplier"]
@@ -122,45 +131,75 @@ def logToJson(logPath, jsonPath, input_seed=nil)
         nbCyclesComputes << section["nbcyclesCompute"]
         ratioInterruptComputes << section["ratioInterruptCompute"].to_f
         executionTavgs << section["executionTavg"].to_f if section["executionTavg"]
+        singleInstructionExectionTavgs << section["executionTavg"].to_f/nbIterationsFunc if section["executionTavg"] && nbIterationsFunc
         totalEnergies << section["energyConsumption"]
-
+        singleInstructionEnergies << section["energyConsumption"] / nbIterationsFunc if nbIterationsFunc
+        
         section.delete("step")
         section.delete("current")
         section.delete("power")
     end
 
-     # Get the unit from executionTavg if available
-     executionUnit = nil
-     if jsonHash["samples"].first && jsonHash["samples"].first["executionTavg"]
-         executionUnit = jsonHash["samples"].first["executionTavg"].split.last
-     end
- 
+    # Get the unit from executionTavg if available
+    executionTimeUnit = nil
+    if jsonHash["samples"].first && jsonHash["samples"].first["executionTavg"]
+        executionTimeUnit = jsonHash["samples"].first["executionTavg"].split.last
+    end
 
-    # summary represents the average of each sample
+    case executionTimeUnit
+    when "s"
+        singleInstructionExecutionTimeUnit = "ms" 
+    when "ms"
+        singleInstructionExecutionTimeUnit = "us" 
+    when "us"
+        singleInstructionExecutionTimeUnit = "ns"
+    else
+        puts "Unknown time unit '#{executionTimeUnit}', defaulting to ms."
+        singleInstructionExecutionTimeUnit = "ms" 
+    end    
+
+    singleInstructionExecutionTime = (executionTavgs.mean/nbIterationsFunc * 1e3)
+    singleInstructionstdDevExecutionTime = (singleInstructionExectionTavgs.standard_deviation * 1e3)
+
+    # summary represents the average of each sample
     jsonHash["summary"] = {
-        "Seed" => seed,
-        "nbSamples" => nbSamples,
-        #"nbIterationsFunc" => nbIterationsFunc,
-        "dataTimeUnit" => dataTimeUnit,
-        "dataTimeMultiplier" => dataTimeMultiplier,
-        #"NbCyclesInterrupt" => nbCyclesInterrupts.mean,
-        #"stdDevNbCyclesInterrupt" => nbCyclesInterrupts.standard_deviation,
-        #"NbCyclesCompute" => nbCyclesComputes.mean,
-        #"stdDevNbCyclesCompute" => nbCyclesComputes.standard_deviation,
-        "ratioInterruptCompute" => ratioInterruptComputes.mean,
-        "stdDevRatioInterruptCompute" => ratioInterruptComputes.standard_deviation,
-        "singleInstructionExecutionTime" => "#{(executionTavgs.mean/nbIterationsFunc).round(4)} #{executionUnit}",
-        "sIstdDevExecutionTime" => executionTavgs.standard_deviation/nbIterationsFunc,
-        "singleInstructionEnergyConsumption" => totalEnergies.mean/nbIterationsFunc,
-        "sIstdDevEnergyConsumption" => totalEnergies.standard_deviation/nbIterationsFunc,
-        "ExecutionTime" => "#{executionTavgs.mean} #{executionUnit}",
-        "stdDevExecutionTime" => executionTavgs.standard_deviation,
-        "EnergyConsumption" => totalEnergies.mean,
-        "stdDevEnergyConsumption" => totalEnergies.standard_deviation
+        "parameters" => {
+            "seed" => seed,
+            "nbSamples" => nbSamples,
+            #"nbIterationsFunc" => nbIterationsFunc,
+
+            "dataTimeUnit" => dataTimeUnit,
+            "dataTimeMultiplier" => dataTimeMultiplier,
+        },
+        "singleInstruction" =>{
+            "singleInstructionExecutionTime" => singleInstructionExecutionTime.round(4),
+            "singleInstructionExecutionTimeUnit" => singleInstructionExecutionTimeUnit,
+            "singleInstructionstdDevExecutionTime" => singleInstructionstdDevExecutionTime.round(8),
+
+            "singleInstructionEnergyConsumption" => (((totalEnergies.mean/nbIterationsFunc) * 1e9).round(4)),
+            "singleInstructionEnergyConsumptionUnit" => "nJ",
+            "singleInstructionstdDevEnergyConsumption" => (singleInstructionEnergies.standard_deviation * 1e9).round(4),
+        },
+        "overall" => {
+            #"NbCyclesInterrupt" => nbCyclesInterrupts.mean,
+            #"stdDevNbCyclesInterrupt" => nbCyclesInterrupts.standard_deviation,
+            #"NbCyclesCompute" => nbCyclesComputes.mean,
+            #"stdDevNbCyclesCompute" => nbCyclesComputes.standard_deviation,
+            "ratioInterruptCompute" => ratioInterruptComputes.mean.round(2),
+            "stdDevRatioInterruptCompute" => ratioInterruptComputes.standard_deviation.round(4),
+
+            "executionTime" => executionTavgs.mean,
+            "executionTimeUnit" => executionTimeUnit,
+            "stdDevExecutionTime" => executionTavgs.standard_deviation.round(4),
+
+            "energyConsumption" => totalEnergies.mean * 1e3,
+            "energyConsumptionUnit" => "mJ",
+            "stdDevEnergyConsumption" => (totalEnergies.standard_deviation*1e3).round(4)
+        }
     }
 
     # Clear the samples from jsonHash
-    # jsonHash.delete("samples")
+    # jsonHash.delete("samples")
 
     File.write(jsonPath, JSON.pretty_generate(jsonHash))
 

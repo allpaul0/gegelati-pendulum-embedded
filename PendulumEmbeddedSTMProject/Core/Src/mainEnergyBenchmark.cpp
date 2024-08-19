@@ -37,6 +37,7 @@
 #include "PendulumINA219Monitor.h"
 #include "ina219.h"
 #include "TimeUnit.h"
+#include "TPGPrograms.h"
 
 /* USER CODE END Includes */
 
@@ -47,7 +48,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define NBMEASURES 10
+#define NB_SAMPLES 10
 
 /* USER CODE END PD */
 
@@ -196,10 +197,12 @@ int main(void)
     std::cout << "TYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
 #endif
 
-    for(int iMeasure=0; iMeasure<10; iMeasure++){
+    for(int idSample=0; idSample<NB_SAMPLES; idSample++){
 
       Cortex_M4_ResetCycleCounter();  /* Reset cycle counter */
       std::cout << "Seed : " << seed << std::endl;
+      std::cout << "NB_SAMPLES : " << NB_SAMPLES << std::endl;
+      std::cout << "NB_ITERATIONS_FUNC : " << NB_ITERATIONS_FUNC << std::endl;
 
       /* Energy consumption measurements */
       std::cout << logStartEnergy << std::endl;

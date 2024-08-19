@@ -267,9 +267,16 @@ if stages["Measures"]
     # Compiling, flashing on STM32, do inference and analyze results for each TPG
 
     sample_size = {}
-    executionTime = {}
-    energyConsumption = {}
     ratioInterruptCompute = {}
+
+    executionTime = {}
+    executionTimeUnit = {}
+    stdDevExecutionTime = {}
+
+    energyConsumption = {}
+    energyConsumptionUnit = {}
+    stdDevEnergyConsumption = {}
+    
 
     valid_TPG_directories.each do |tpgDirName|
         
@@ -381,10 +388,16 @@ if stages["Measures"]
     
         # Store summary values
         tpgDirName = tpgDirName.to_s  # Convert to string if necessary
-        sample_size[tpgDirName] = dataJson["summary"]["nbSamples"]
-        executionTime[tpgDirName] = dataJson["summary"]["singleInstructionExecutionTime"]
-        energyConsumption[tpgDirName] = dataJson["summary"]["singleInstructionEnergyConsumption"]
-        ratioInterruptCompute[tpgDirName] = dataJson["summary"]["ratioInterruptCompute"]
+        sample_size[tpgDirName] = dataJson["summary"]["parameters"]["nbSamples"]
+        ratioInterruptCompute[tpgDirName] = dataJson["summary"]["overall"]["ratioInterruptCompute"]
+        
+        executionTime[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionExecutionTime"]
+        executionTimeUnit[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionExecutionTimeUnit"]
+        stdDevExecutionTime[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionstdDevExecutionTime"]
+
+        energyConsumption[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionEnergyConsumption"]
+        energyConsumptionUnit[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionEnergyConsumptionUnit"]
+        stdDevEnergyConsumption[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionstdDevEnergyConsumption"]
     end
     
     # Displaying global results
@@ -392,9 +405,9 @@ if stages["Measures"]
     valid_TPG_directories.sort.each do |tpgDirName|
         puts "\033[1;33m#{tpgDirName}\033[0m"
         puts "\tSample size: #{sample_size[tpgDirName]}"
-        puts "\tInstruction execution time : \033[0;35m#{executionTime[tpgDirName]}\033[0m"
-        puts "\tInstruction energy consumption : \033[1;32m#{(energyConsumption[tpgDirName] * (10**9)).round(8)} nJ\033[0m"
-        puts "\tRatio Measure/Compute : #{(ratioInterruptCompute[tpgDirName]).round(2)}%"
+        puts "\tInstruction execution time : \033[0;35m#{executionTime[tpgDirName]}+-#{stdDevExecutionTime[tpgDirName]} #{executionTimeUnit[tpgDirName]}\033[0m"
+        puts "\tInstruction energy consumption : \033[1;32m#{energyConsumption[tpgDirName]}+-#{stdDevEnergyConsumption[tpgDirName]} #{energyConsumptionUnit[tpgDirName]}\033[0m"
+        puts "\tRatio Measure/Compute : #{ratioInterruptCompute[tpgDirName]}%"
     end
 end
 

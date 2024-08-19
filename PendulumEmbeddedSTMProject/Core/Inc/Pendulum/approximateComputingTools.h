@@ -43,11 +43,11 @@ inline int f_pow2(int si_b) {
 
 inline int f_log2(int si_a)
 {    
-  	int result = 0;    
+  int result = 0;    
 	if(si_a > 0) {
 		for (result = 0; si_a > 1; result++, si_a >>= 1);
 	}
-    return result;
+  return result;
 }
 
 inline int f_div(int si_a, int si_b) {
