@@ -85,6 +85,10 @@ set(EXECUTION_STATS_TARGET ExecutionStats)
 add_executable(${EXECUTION_STATS_TARGET} src/mainExecutionStats.cpp ${files})
 target_link_libraries(${EXECUTION_STATS_TARGET} ${GEGELATI_LIBRARIES})
 
+set(EXECUTION_INFOS_TARGET ExecutionInfos)
+add_executable(${EXECUTION_INFOS_TARGET} src/mainExecutionInfos.cpp ${files})
+target_link_libraries(${EXECUTION_INFOS_TARGET} ${GEGELATI_LIBRARIES})
+
 set(VALIDATION_TARGET Validation)
 add_executable(${VALIDATION_TARGET} src/mainValidation.cpp ${files})
 target_link_libraries(${VALIDATION_TARGET} ${GEGELATI_LIBRARIES})
