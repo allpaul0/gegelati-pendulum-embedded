@@ -54,9 +54,9 @@ void PendulumINA219Bench::printResult(){
 
 		auto nbcycles_interrupt = this->pendulumINA219Monitor->getNbCycleInInterrupt();
 		auto ratio_interrupt_compute = ((double) nbcycles_interrupt/(double) this->nbcyclesInCompute)*100;
-		std::cout << "=== C_nbcyclesInterrupt : " << nbcycles_interrupt << " cycles" << std::endl;
-		std::cout << "=== C_nbcyclesCompute : " << this->nbcyclesInCompute << " cycles" << std::endl;
-		std::cout << "=== C_ratioInterruptCompute : " << ratio_interrupt_compute << "%" << std::endl;
+		std::cout << "=== C_nbcyclesInterrupt : " << std::setw(9) << nbcycles_interrupt << " cycles" << std::endl;
+		std::cout << "=== C_nbcyclesCompute :   " << std::setw(9) << this->nbcyclesInCompute << " cycles" << std::endl;
+		std::cout << "=== C_ratioInterruptCompute : " << std::setw(9)  << ratio_interrupt_compute << "%" << std::endl;
 	}
 
 }

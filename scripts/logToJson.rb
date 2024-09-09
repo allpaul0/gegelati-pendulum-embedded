@@ -17,8 +17,8 @@ def logToJson(logPath, jsonPath, input_seed=nil)
     
     paramLine = /dataTimeUnit : (#{textRegex})\tdataTimerMultiplier : (#{floatRegex})\tStartAngle : (#{floatRegex})\tStartVelocity : (#{floatRegex})/
     headerLine = /Step\tCurrent\tPower/
-    executionTimingLine = /\=\=\= T_(#{textRegex}) : (#{floatRegex}) (#{textRegex})/
-    cyclesLine = /\=\=\= C_(#{textRegex}) : (#{floatRegex})(( #{textRegex})|%)/
+    executionTimingLine = /\=\=\= T_(#{textRegex}) :\s+(#{floatRegex})\s+(#{textRegex})/
+    cyclesLine = /\=\=\= C_(#{textRegex}) :\s+(#{floatRegex})\s*((#{textRegex})|%)/
 
     jsonHash = {"samples" => [], "summary" => {}}
     current_sample = nil

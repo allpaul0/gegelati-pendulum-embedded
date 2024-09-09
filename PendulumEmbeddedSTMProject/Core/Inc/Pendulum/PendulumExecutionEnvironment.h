@@ -11,6 +11,10 @@
 #include <iostream>
 #endif
 
+#if PENDULUM_TRACE == 1
+#include <iostream>
+#endif
+
 /**
  * \brief Pendulum Execution Environment for execution on embedded system.
  * 
@@ -122,7 +126,7 @@ public:
 inline int PendulumExecutionEnvironment::getCurrentStep() const { return this->currentStep; }
 
 
-#ifdef PENDULUM_TRACE
+#if PENDULUM_TRACE == 1
 /// Print a PendulumExecutionEnvironment in a stream.
 std::ostream& operator<<(std::ostream& os, const PendulumExecutionEnvironment& pendulum);
 #endif

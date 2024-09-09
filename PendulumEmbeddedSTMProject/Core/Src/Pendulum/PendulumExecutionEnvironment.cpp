@@ -12,7 +12,7 @@
 #include <cstdint>
 
 
-#ifdef PENDULUM_TRACE
+#if PENDULUM_TRACE == 1
 #include <iostream>
 #endif
 
@@ -103,7 +103,7 @@ void PendulumExecutionEnvironment::startInference(int nbSteps){
 		uint64_t action = (uint64_t)inferenceTPG();
 		this->doAction(action);
 
-#ifdef PENDULUM_TRACE
+#if PENDULUM_TRACE == 1
 		std::cout << *this << " === Step " << i << ", action : " << getActionFromID(action) << std::endl;
 #endif
 	}
@@ -112,7 +112,7 @@ void PendulumExecutionEnvironment::startInference(int nbSteps){
 }
 
 
-#ifdef PENDULUM_TRACE
+#if PENDULUM_TRACE == 1
 std::ostream& operator<<(std::ostream& os, const PendulumExecutionEnvironment& pendulum){
     return os << "Pendulum current state : { Angle = " << pendulum.getAngle() << ", Velocity = " << pendulum.getVelocity() << "}";
 }

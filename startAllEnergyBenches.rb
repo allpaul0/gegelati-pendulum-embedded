@@ -33,8 +33,11 @@ resultDirPrefix = Time.now.strftime("%Y-%m-%d_%H-%M-%S")
 # Only used if sameSeed parameter is true
 common_seed = rand(C_UINT_MAX)
 
-#will display information about compilation, execution, ...
+# will display information about compilation, execution, ...
 verbose = false
+
+# Will display acions of pendulum 
+pendulumTrace = 0 
 
 # ===============================
 
@@ -42,7 +45,7 @@ def check_serial_ports
     available_port = nil
 
     # Iterate over possible ports (assuming only one port can be available)
-    (0..1).each do |index|
+    (0..9).each do |index|
         port = "/dev/ttyACM#{index}"
         if File.exist?(port)
             available_port = port
@@ -189,6 +192,10 @@ OptionParser.new{ |parser|
         exit
     }
 
+    parser.on("--pendulum_trace", "set the preprocessor directive PENDULUM_TRACE=1, will print action of pendulum"){
+        pendulumTrace = 1
+    }
+
     parser.on("-v", "verbose"){
         verbose = true;
     }
@@ -213,6 +220,7 @@ if verbose
   puts "Common Seed: #{common_seed}" if common_seed
   puts "Result Dir Prefix: #{resultDirPrefix}"
   puts "TPG_dir: #{TPG_dir}"
+  puts "pendulum trace : #{pendulumTrace}"
 end
 
 
@@ -307,10 +315,16 @@ if stages["Measures"]
         # Set the seed value and inform the compiler whether we are using INT or not
         type_int = tpgDirName.include?("int") ? 1 : 0
       
-        system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=0/g' {} +")
+        system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DTYPE_INT=[0-9][0-9]*/-DTYPE_INT=#{type_int}/g' {} +")
         checkExitstatus("find PendulumEmbeddedSTMProject sed -i TYPE_INT")
+
         # display changes
-        #system("find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- \"-DTYPE_INT=[0-9][0-9]*\" {} +")
+        #system("grep -r -n -H "TYPE_INT" PendulumEmbeddedSTMProject")
+
+        system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DPENDULUM_TRACE=[0-9][0-9]*/-DPENDULUM_TRACE=#{pendulumTrace}/g' {} +")
+        checkExitstatus("find PendulumEmbeddedSTMProject sed -i PENDULUM_TRACE")
+
+        
       
         puts "\tCompilation of the embedded binary"
       

@@ -9,7 +9,7 @@
 #include "PendulumLearningEnvironment.h"    
 
 #define DEFAULT_NB_ACTIONS 1000
-#define DEFAULT_NB_SEEDS 75
+#define DEFAULT_NB_SEEDS 100
 // #define VERBOSE
 
 // Function to write data from two arrays to a CSV file

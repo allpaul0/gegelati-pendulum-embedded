@@ -42,6 +42,7 @@ Trainer-Generator/params.json
 Trainer-Generator/src/instructions.cpp
 Trash
 scripts/python/*
+scripts/poster_ACACES_2024/__pycache__/*
 
 # Others
 .vscode/

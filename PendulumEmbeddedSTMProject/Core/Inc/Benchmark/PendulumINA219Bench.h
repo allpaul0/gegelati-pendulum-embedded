@@ -3,6 +3,7 @@
 
 #include "INA219Bench.h"
 #include "PendulumINA219Monitor.h"
+#include "iomanip"
 
 /**
  * \brief Specification of the PendulumINA219Bench class
