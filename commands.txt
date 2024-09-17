@@ -1,0 +1,35 @@
+# Start benchmarks for raw latency/energy results only
+./startAllEnergyBenches.rb --skip CodeGen --skip Analysis --skip PlotResults --same-seed 0 TPG_microbenchmarks 
+
+# Start benchmarks 
+./startAllEnergyBenches.rb --same-seed 0 TPG_10v -v
+
+# Start benchmarks for instruction level Analysis
+./startAllEnergyBenches.rb --skip CodeGen --skip Analysis --skip PlotResults --same-seed 0 TPG_microbenchmarks -v --instruction_level_analysis
+
+#Start benchmarks for graph level Analysis
+./startAllEnergyBenches.rb --skip CodeGen --skip Analysis --skip PlotResults --same-seed 0 TPG_10v -v --graph_level_analysis
+
+# Hand cleaning and compilation of the project
+make clean -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench
+make -j20 all -C ./PendulumEmbeddedSTMProject/ReleaseEnergyBench TPG_SEED=0 TYPE_INT=1
+
+# Program the microcontroller w the binary
+STM32_Programmer_CLI -c port=SWD -w PendulumEmbeddedSTMProject/ReleaseEnergyBench/PendulumEmbeddedSTMProject.elf -rst
+# Open specified port (custom baud rate) 
+picocom -b 115200 /dev/ttyACM0 
+Ctrl+A+X leave terminal
+
+# in the stm32cubeide hierarchy, find the -DTYPE_INT references
+find PendulumEmbeddedSTMProject -type f -exec grep -Hn -- "-DTYPE_INT=[0-9][0-9]*" {} +
+
+# Microbenchmarks dissasemble 
+/opt/gcc-arm-none-eabi-10.3-2021.10/bin/arm-none-eabi-objdump -d TPG_microbenchmarks/mult_int/CodeGen/PendulumEmbeddedSTMProject.elf > TPG_microbenchmarks/mult_int/assembly.txt
+mv TPG_microbenchmarks/mult_int/assembly.txt TPG_microbenchmarks/mult_int/CodeGen/.
+
+
+# Generate latency distribution (percentage of samples for each fraction of the latency)
+# 1. Reshape raw log file 
+ruby scripts/logToJsonEnergy.rb TPG_10v/double_base/inference/2024-08-21_11-29-44/energy.log TPG_10v/double_base/inference/2024-08-21_11-29-44/energy_data2.json
+# 2. Generate plot 
+/usr/bin/python3 /home/paulallaire/dev/gegelati-pendulum-embedded/gegelati-pendulum-embedded/scripts/poster_ACACES_2024/energybenchmarks.py

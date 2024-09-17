@@ -8,7 +8,8 @@ require 'timeout'
 
 require 'serialport'
 
-require_relative 'scripts/logToJson'
+require_relative 'scripts/instructionLevelLogToJson'
+require_relative 'scripts/graphLevelLogToJson'
 
 
 C_UINT_MAX = 4294967295     # C language max unsigned int constant value from limits.h
@@ -36,8 +37,14 @@ common_seed = rand(C_UINT_MAX)
 # will display information about compilation, execution, ...
 verbose = false
 
-# Will display acions of pendulum 
+# will display acions of pendulum 
 pendulumTrace = 0 
+
+# will perform instruction level analysis
+instructionLevelAnalysis = 0
+
+# will perform graph level analysis
+graphLevelAnalysis = 0
 
 # ===============================
 
@@ -196,6 +203,16 @@ OptionParser.new{ |parser|
         pendulumTrace = 1
     }
 
+    parser.on("--instruction_level_analysis", "set the preprocessor directive INSTRUCTION_LEVEL_ANALYSIS=1, will measure 
+        at instruction level"){
+        instructionLevelAnalysis = 1
+    }
+
+    parser.on("--graph_level_analysis", "set the preprocessor directive GRAPH_LEVEL_ANALYSIS=1, will measure 
+        at graph level"){
+        graphLevelAnalysis = 1
+    }
+
     parser.on("-v", "verbose"){
         verbose = true;
     }
@@ -221,6 +238,8 @@ if verbose
   puts "Result Dir Prefix: #{resultDirPrefix}"
   puts "TPG_dir: #{TPG_dir}"
   puts "pendulum trace : #{pendulumTrace}"
+  puts "instruction-level analysis : #{instructionLevelAnalysis}"
+  puts "graph-level analysis : #{graphLevelAnalysis}" 
 end
 
 
@@ -324,7 +343,12 @@ if stages["Measures"]
         system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DPENDULUM_TRACE=[0-9][0-9]*/-DPENDULUM_TRACE=#{pendulumTrace}/g' {} +")
         checkExitstatus("find PendulumEmbeddedSTMProject sed -i PENDULUM_TRACE")
 
-        
+        system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DINSTRUCTION_LEVEL_ANALYSIS=[0-9][0-9]*/-DINSTRUCTION_LEVEL_ANALYSIS=#{instructionLevelAnalysis}/g' {} +")
+        checkExitstatus("find PendulumEmbeddedSTMProject sed -i INSTRUCTION_LEVEL_ANALYSIS")
+
+        system("find PendulumEmbeddedSTMProject -type f -exec sed -i 's/-DGRAPH_LEVEL_ANALYSIS=[0-9][0-9]*/-DGRAPH_LEVEL_ANALYSIS=#{graphLevelAnalysis}/g' {} +")
+        checkExitstatus("find PendulumEmbeddedSTMProject sed -i GRAPH_LEVEL_ANALYSIS")
+
       
         puts "\tCompilation of the embedded binary"
       
@@ -398,30 +422,36 @@ if stages["Measures"]
         logFile.close
 
         # Convert log file to JSON
-        dataJson = logToJson(logPath, dataPath, seed)
-    
-        # Store summary values
-        tpgDirName = tpgDirName.to_s  # Convert to string if necessary
-        sample_size[tpgDirName] = dataJson["summary"]["parameters"]["nbSamples"]
-        ratioInterruptCompute[tpgDirName] = dataJson["summary"]["overall"]["ratioInterruptCompute"]
-        
-        executionTime[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionExecutionTime"]
-        executionTimeUnit[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionExecutionTimeUnit"]
-        stdDevExecutionTime[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionstdDevExecutionTime"]
+        if instructionLevelAnalysis == 1
+            dataJson = instructionLevelLogToJson(logPath, dataPath, seed)
 
-        energyConsumption[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionEnergyConsumption"]
-        energyConsumptionUnit[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionEnergyConsumptionUnit"]
-        stdDevEnergyConsumption[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionstdDevEnergyConsumption"]
+            # Store summary values
+            tpgDirName = tpgDirName.to_s  # Convert to string if necessary
+            sample_size[tpgDirName] = dataJson["summary"]["parameters"]["nbSamples"]
+            ratioInterruptCompute[tpgDirName] = dataJson["summary"]["overall"]["ratioInterruptCompute"]
+            
+            executionTime[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionExecutionTime"]
+            executionTimeUnit[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionExecutionTimeUnit"]
+            stdDevExecutionTime[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionstdDevExecutionTime"]
+
+            energyConsumption[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionEnergyConsumption"]
+            energyConsumptionUnit[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionEnergyConsumptionUnit"]
+            stdDevEnergyConsumption[tpgDirName] = dataJson["summary"]["singleInstruction"]["singleInstructionstdDevEnergyConsumption"]
+        else 
+            dataJson = graphLevelLogToJson(logPath, dataPath)
+        end
     end
     
-    # Displaying global results
-    puts "\033[1;32m=====[ Microbenchmark summary ]=====\033[0m"
-    valid_TPG_directories.sort.each do |tpgDirName|
-        puts "\033[1;33m#{tpgDirName}\033[0m"
-        puts "\tSample size: #{sample_size[tpgDirName]}"
-        puts "\tInstruction execution time : \033[0;35m#{executionTime[tpgDirName]}+-#{stdDevExecutionTime[tpgDirName]} #{executionTimeUnit[tpgDirName]}\033[0m"
-        puts "\tInstruction energy consumption : \033[1;32m#{energyConsumption[tpgDirName]}+-#{stdDevEnergyConsumption[tpgDirName]} #{energyConsumptionUnit[tpgDirName]}\033[0m"
-        puts "\tRatio Measure/Compute : #{ratioInterruptCompute[tpgDirName]}%"
+    if instructionLevelAnalysis == 1
+        # Displaying global results
+        puts "\033[1;32m=====[ Instruction-level Analysis summary ]=====\033[0m"
+        valid_TPG_directories.sort.each do |tpgDirName|
+            puts "\033[1;33m#{tpgDirName}\033[0m"
+            puts "\tSample size: #{sample_size[tpgDirName]}"
+            puts "\tInstruction execution time : \033[0;35m#{executionTime[tpgDirName]}+-#{stdDevExecutionTime[tpgDirName]} #{executionTimeUnit[tpgDirName]}\033[0m"
+            puts "\tInstruction energy consumption : \033[1;32m#{energyConsumption[tpgDirName]}+-#{stdDevEnergyConsumption[tpgDirName]} #{energyConsumptionUnit[tpgDirName]}\033[0m"
+            puts "\tRatio Measure/Compute : #{ratioInterruptCompute[tpgDirName]}%"
+        end
     end
 end
 

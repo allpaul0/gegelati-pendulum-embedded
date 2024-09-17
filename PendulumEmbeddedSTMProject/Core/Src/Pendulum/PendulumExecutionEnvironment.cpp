@@ -101,7 +101,9 @@ void PendulumExecutionEnvironment::startInference(int nbSteps){
 	for(int i = 0; i < nbSteps; i++){
 		this->currentStep = i;
 		uint64_t action = (uint64_t)inferenceTPG();
-		this->doAction(action);
+#if INSTRUCTION_LEVEL_ANALYSIS == 0 && GRAPH_LEVEL_ANALYSIS == 0 
+        this->doAction(action);
+#endif
 
 #if PENDULUM_TRACE == 1
 		std::cout << *this << " === Step " << i << ", action : " << getActionFromID(action) << std::endl;

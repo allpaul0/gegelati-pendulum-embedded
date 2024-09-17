@@ -2,6 +2,9 @@
 require 'json'
 require 'descriptive_statistics'
 
+# description: script for mutliples seeds energy and latency benchmarks plots, shows distribution of the data
+# Generate latency distribution (percentage of samples for each fraction of the latency)
+
 def processLogFile(logPath, jsonPath)
     # Define regex patterns for the new log format
     logStartEnergy = "##### Log Start #####"
@@ -58,7 +61,7 @@ end
 
 # Command-line argument handling
 if ARGV.length != 2
-    puts "Usage: ruby logToJsonEnergy.rb <log_file> <output_file>"
+    puts "Usage: ruby instructionLevelLogToJson.rb <log_file> <output_file>"
     exit 1
 end
 

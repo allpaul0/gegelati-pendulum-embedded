@@ -1,9 +1,14 @@
 require 'json'
 require 'descriptive_statistics'
 
+# instruction level log to json
 # Units by default are Watts for power and Amperes for current
 
-def logToJson(logPath, jsonPath, input_seed=nil)
+def instructionLevelLogToJson(logPath, jsonPath, input_seed=nil)
+
+
+    # define regex to match 
+
     logStartEnergy = "##### Log Start Energy #####"
     logStartTiming = "##### Log Start Timing #####"
     logEndEnergy = "##### Log End Energy #####"
@@ -20,11 +25,17 @@ def logToJson(logPath, jsonPath, input_seed=nil)
     executionTimingLine = /\=\=\= T_(#{textRegex}) :\s+(#{floatRegex})\s+(#{textRegex})/
     cyclesLine = /\=\=\= C_(#{textRegex}) :\s+(#{floatRegex})\s*((#{textRegex})|%)/
 
+
+    # variables definition
+
     jsonHash = {"samples" => [], "summary" => {}}
     current_sample = nil
     nbSamples = nil
     nbIterationsFunc = nil
     seed = nil
+
+
+    # Parse the log file
 
     File.open(logPath).each_line do |line|
         if line.include?(logStartEnergy)
@@ -63,7 +74,7 @@ def logToJson(logPath, jsonPath, input_seed=nil)
                     current_sample["executionT#{timing_name}"] = "#{value.sub(/.?0*$/, '')} #{unit}"
                 end
             else
-                # Parse NB_SAMPLES and NB_ITERATIONS_FUNC
+                # Parse NB_SAMPLES, NB_ITERATIONS_FUNC, Seed
                 if line.include?("NB_SAMPLES")
                     nbSamples = line.split(":")[1].strip.to_i
                 elsif line.include?("NB_ITERATIONS_FUNC")
@@ -75,7 +86,8 @@ def logToJson(logPath, jsonPath, input_seed=nil)
         end
     end
 
-    jsonHash["samples"] << current_sample if current_sample
+
+    # variables definition 
 
     dataTimeUnit = nil
     dataTimeMultiplier = nil
@@ -89,7 +101,14 @@ def logToJson(logPath, jsonPath, input_seed=nil)
     singleInstructionEnergies = []
     singleInstructionExecutionTimeUnit = nil
 
+
+    # for each sample find mean & stdDev for energy and time 
+
+    # jsonHash is a hash (a dictionary-like structure in Ruby).
+    # jsonHash["samples"]: retrieves the value associated with the key "samples", which is an array of different objects.
+
     jsonHash["samples"].each do |section|
+
         next unless section.is_a?(Hash) && !section["current"].nil?
 
         toRemove = []
@@ -108,25 +127,25 @@ def logToJson(logPath, jsonPath, input_seed=nil)
 
         timeUnit = section["dataTimeUnit"]
         timeMultiplier = section["dataTimeMultiplier"]
-        measureStepTime = timeMultiplier
-
-        case timeUnit
-        when "ms"
-            measureStepTime = timeMultiplier / 1000.0
-        when "us"
-            measureStepTime = timeMultiplier / 1000000.0
-        when "s"
-            # Do nothing, already in seconds
-        else
-            puts "Unknown time unit '#{timeUnit}', defaulting to seconds."
-        end
+        # measureStepTime is a func to convert the frequency of power sampling to seconds
+        # e.g: TIM7 samples every 3 ms -> 0.003
+        measureStepTime = adjust_measurement_time(timeUnit, timeMultiplier)
 
         # E=Sum of power values * Measurement interval
+        # Total Energy consumption = sum(0.66 * 0.003, 0.72 * 0.003, ...)
+        #                          = sum(0.66, 0.72, ...) * 0.003
         section["energyConsumption"] = section["power"].sum * measureStepTime
         energyConsumptionUnit = "J"
 
-        dataTimeUnit ||= section["dataTimeUnit"]
-        dataTimeMultiplier ||= section["dataTimeMultiplier"]
+
+        # retrieve parameters for summary
+        unless dataTimeUnit
+            dataTimeUnit = timeUnit
+            dataTimeMultiplier = timeMultiplier
+        end
+
+        # find key informations
+
         nbCyclesInterrupts << section["nbcyclesInterrupt"]
         nbCyclesComputes << section["nbcyclesCompute"]
         ratioInterruptComputes << section["ratioInterruptCompute"].to_f
@@ -135,16 +154,28 @@ def logToJson(logPath, jsonPath, input_seed=nil)
         totalEnergies << section["energyConsumption"]
         singleInstructionEnergies << section["energyConsumption"] / nbIterationsFunc if nbIterationsFunc
         
+        # no longer needed, heavy and will pollute uselessly
+
         section.delete("step")
         section.delete("current")
         section.delete("power")
     end
 
+
     # Get the unit from executionTavg if available
+
     executionTimeUnit = nil
     if jsonHash["samples"].first && jsonHash["samples"].first["executionTavg"]
         executionTimeUnit = jsonHash["samples"].first["executionTavg"].split.last
     end
+
+    # When going from Overall execTime and Consumption to single Instruction we divide by nbIterationsFunc
+    # This causes the data to be fractional, for better readability we rescale it.
+    
+    # multiply everything by 1e3 and adjust the unit
+
+    singleInstructionExecutionTime = (executionTavgs.mean/nbIterationsFunc * 1e3)
+    singleInstructionstdDevExecutionTime = (singleInstructionExectionTavgs.standard_deviation * 1e3)
 
     case executionTimeUnit
     when "s"
@@ -156,20 +187,18 @@ def logToJson(logPath, jsonPath, input_seed=nil)
     else
         puts "Unknown time unit '#{executionTimeUnit}', defaulting to ms."
         singleInstructionExecutionTimeUnit = "ms" 
-    end    
+    end
 
-    singleInstructionExecutionTime = (executionTavgs.mean/nbIterationsFunc * 1e3)
-    singleInstructionstdDevExecutionTime = (singleInstructionExectionTavgs.standard_deviation * 1e3)
 
     # summary represents the average of each sample
+
     jsonHash["summary"] = {
         "parameters" => {
             "seed" => seed,
             "nbSamples" => nbSamples,
-            #"nbIterationsFunc" => nbIterationsFunc,
-
-            "dataTimeUnit" => dataTimeUnit,
-            "dataTimeMultiplier" => dataTimeMultiplier,
+            "nbIterationsFunc" => nbIterationsFunc,
+            "timeUnit" => dataTimeUnit,
+            "timeMultiplier" => dataTimeMultiplier,
         },
         "singleInstruction" =>{
             "singleInstructionExecutionTime" => singleInstructionExecutionTime.round(4),
@@ -185,23 +214,46 @@ def logToJson(logPath, jsonPath, input_seed=nil)
             #"stdDevNbCyclesInterrupt" => nbCyclesInterrupts.standard_deviation,
             #"NbCyclesCompute" => nbCyclesComputes.mean,
             #"stdDevNbCyclesCompute" => nbCyclesComputes.standard_deviation,
+
             "ratioInterruptCompute" => ratioInterruptComputes.mean.round(2),
             "stdDevRatioInterruptCompute" => ratioInterruptComputes.standard_deviation.round(4),
 
             "executionTime" => executionTavgs.mean,
-            "executionTimeUnit" => executionTimeUnit,
             "stdDevExecutionTime" => executionTavgs.standard_deviation.round(4),
+            "executionTimeUnit" => executionTimeUnit,
+
 
             "energyConsumption" => totalEnergies.mean * 1e3,
-            "energyConsumptionUnit" => "mJ",
-            "stdDevEnergyConsumption" => (totalEnergies.standard_deviation*1e3).round(4)
+            "stdDevEnergyConsumption" => (totalEnergies.standard_deviation*1e3).round(4),
+            "energyConsumptionUnit" => "mJ"
+
         }
     }
 
-    # Clear the samples from jsonHash
+    puts JSON.pretty_generate(jsonHash["summary"]["singleInstruction"])
+
+    # Clear the samples from jsonHash, currently they aren't too heavy and can be maintained 
+    # for quick checking of the data correctness.
+
     # jsonHash.delete("samples")
 
     File.write(jsonPath, JSON.pretty_generate(jsonHash))
 
     jsonHash
+end
+
+# TIM 7 = 3 ms -> 0.003
+def adjust_measurement_time(timeUnit, timeMultiplier)
+    case timeUnit
+    when "ms"
+      timeMultiplier / 1000.0
+    when "us"
+      timeMultiplier / 1_000_000.0
+    when "s"
+      # Do nothing, already in seconds
+      timeMultiplier
+    else
+      puts "Unknown time unit '#{timeUnit}', defaulting to seconds."
+      timeMultiplier
+    end
 end

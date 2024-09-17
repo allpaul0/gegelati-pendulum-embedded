@@ -6,7 +6,7 @@ Use of these scripts is automated by the `startAllEnergyBenches.rb` script.
 ## `start_training.rb`
 Start TPG trainings with the Trainer-Genrator project (read corresponding README.md for more instructions).
 
-## `start_generation.rb`
+## `start_code_generation.rb`
 Generate CodeGen files for every TPGs in TPG/ directory.
 
 ## `start_pre_calcul.rb`
@@ -26,8 +26,14 @@ For each TPG, generate plots for the energy measurement curves and execution sta
 ## `generate_execution_summary.jl`
 Generate a summary of the average execution stats for all TPGs in TPG/ for comparison.
 
-## `logToJson.rb`
-Provide a function to parse energy.log files into a json file.
+## `instructionLevelLogToJson.rb`
+Provide a function to parse energy.log files into a json file. Targeted energy.log must have been generated for instruction level measurements (single instruction).
+
+## `graphLevelLogToJson.rb`
+Provide a function to parse energy.log files into a json file. Targeted energy.log must have been generated for graph level measurements (single graph traversal).
+
+## `graphLevelLogToJson.rb`
+Provide a function to parse energy.log files into a json file. Targeted energy.log must have been generated for multiple different (using different seeds) TPG executions. The ouput, the distribution of latency and energy of those executions over time, is processed by this ruby script and sent to json format.  
 
 ## `install_julia_packages.jl`
 Setup the julia project files and install julia packages required by julia scripts.

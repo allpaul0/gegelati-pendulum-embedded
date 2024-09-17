@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# Create synthetic overlay of latency distributions for the Poster
+
 # Change the default font size to 24
 plt.rcParams['font.size'] = 20
 

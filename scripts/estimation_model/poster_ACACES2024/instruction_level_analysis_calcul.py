@@ -3,6 +3,8 @@ import os
 # Import BenchmarkUtils class
 from benchmarkUtils import BenchmarkUtils
 
+# script used to do computation on instruction level analysis  
+
 # Initialize the class with the base folder path
 utils = BenchmarkUtils(base_path=os.getcwd())
 

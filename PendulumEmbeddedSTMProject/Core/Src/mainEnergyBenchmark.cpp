@@ -39,6 +39,10 @@
 #include "TimeUnit.h"
 #include "TPGPrograms.h"
 
+#if GRAPH_LEVEL_ANALYSIS == 1
+#include "seeds_nbActionsToTerminal.h"
+#endif
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +52,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define NB_SAMPLES 10
+#define NB_SAMPLES 3
 
 /* USER CODE END PD */
 
@@ -63,12 +67,18 @@
 // === Pendulum global access and parameters === */
 
 PendulumExecutionEnvironment* pendulumEE_ptr;
+#if INSTRUCTION_LEVEL_ANALYSIS == 1
 uint16_t nbActions = 1;	// Number of actions per inference
+#else 
+uint16_t nbActions = 10000;
+#endif
 double initAngle = 0.0;
 double initVelocity = 0.0;
 
 // === Measurements and log ===
 INA219_t ina219t;
+const char logStartBench[] = "##### Log Start Bench #####";
+const char logEndBench[] = "##### Log End Bench #####";
 const char logStartEnergy[] = "##### Log Start Energy #####";
 const char logEndEnergy[] = "##### Log End Energy #####";
 const char logStartTiming[] = "##### Log Start Timing #####";
@@ -151,7 +161,12 @@ int main(void)
 
 
 	// Reset pendulum environment and store the initial conditions
+#if GRAPH_LEVEL_ANALYSIS == 1
+  uint16_t nbSeeds = NB_SEEDS;
+	pendulumEE.reset(seeds[0]);
+#else
 	pendulumEE.reset(seed);
+#endif
 	initAngle = pendulumEE.getAngle();
 	initVelocity = pendulumEE.getVelocity();
 
@@ -190,6 +205,7 @@ int main(void)
 		while (buffStart != '\n'); // (ACK) signal is a newline character
 
 	  int coeff = COEFF_DYNAMIC_OPPENING;
+    std::cout << logStartBench << std::endl;
 
 #if TYPE_INT == 1
 	  std::cout << "TYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
@@ -197,25 +213,45 @@ int main(void)
     std::cout << "TYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
 #endif
 
-    for(int idSample=0; idSample<NB_SAMPLES; idSample++){
+#if GRAPH_LEVEL_ANALYSIS == 1
+    for(int idSeed=0; idSeed<3; idSeed++){
+#endif
+      for(int idSample=0; idSample<NB_SAMPLES; idSample++){
+        
+        std::cout << logStartBench << std::endl;
+        Cortex_M4_ResetCycleCounter();  /* Reset cycle counter */
+        
+        std::cout << "NB_SAMPLES : " << NB_SAMPLES << std::endl;
+#if INSTRUCTION_LEVEL_ANALYSIS == 1
+        std::cout << "NB_ITERATIONS_FUNC : " << NB_ITERATIONS_FUNC << std::endl;
+#endif
+#if GRAPH_LEVEL_ANALYSIS == 1
+        std::cout << "SEED : " << seeds[idSeed] << std::endl;
+        std::cout << "ITERATION_NUMBER : " << idSeed << std::endl;
+        std::cout << "ID_SAMPLE : " << idSample << std::endl;
+        std::cout << "NB_ACTIONS : " << nbActions << std::endl;
+#endif
+#if GRAPH_LEVEL_ANALYSIS == 1
+        pendulumEE_ptr->reset(seeds[idSeed]);
+#endif
 
-      Cortex_M4_ResetCycleCounter();  /* Reset cycle counter */
-      std::cout << "Seed : " << seed << std::endl;
-      std::cout << "NB_SAMPLES : " << NB_SAMPLES << std::endl;
-      std::cout << "NB_ITERATIONS_FUNC : " << NB_ITERATIONS_FUNC << std::endl;
+        /* Energy consumption measurements */
+        std::cout << logStartEnergy << std::endl;
+        energybench.startBench();
+        energybench.printResult();
+        std::cout << logEndEnergy << std::endl;
 
-      /* Energy consumption measurements */
-      std::cout << logStartEnergy << std::endl;
-      energybench.startBench();
-      energybench.printResult();
-      std::cout << logEndEnergy << std::endl;
+        /* Execution time measurement without energy measurement interruptions */
+        std::cout << logStartTiming << std::endl;
+        executionTimingBench.startBench();
+        executionTimingBench.printResult();
+        std::cout << logEndTiming << std::endl;
 
-      /* Execution time measurement without energy measurement interruptions */
-      std::cout << logStartTiming << std::endl;
-      executionTimingBench.startBench();
-      executionTimingBench.printResult();
-      std::cout << logEndTiming << std::endl;
+        std::cout << logEndBench << std::endl;
+      }
+#if GRAPH_LEVEL_ANALYSIS == 1
     }
+#endif
     std::cout << "END" << std::endl;
 
     Cortex_M4_DisableCycleCounter(); /* disable counting if not used any more */
@@ -281,8 +317,6 @@ void SystemClock_Config(void)
 
 /* Function for benchmarks */
 void benchWrapper(void){
-  // set similar starting conditions as Energy consumption measurements
-  pendulumEE_ptr->reset(initAngle, initVelocity);
   pendulumEE_ptr->startInference((int)nbActions);
 }
 
