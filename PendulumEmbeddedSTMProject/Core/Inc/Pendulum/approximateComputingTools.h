@@ -50,7 +50,8 @@ inline int f_log2(int si_a)
   return result;
 }
 
-inline int f_div(int si_a, int si_b) {
+// forces the compiler to inline the function even if optimizations are disabled. 
+inline int __attribute__((always_inline))f_div(int si_a, int si_b) {
     
     int result = 0;
 
