@@ -166,19 +166,21 @@ def group_samples_by_seed(jsonHash, nbSamples, nbActions)
 
     jsonHash["summary"][seed] = {}
 
+    # Can be decommented for insight on the calculus
+
     # Update summary with grouped data
-    jsonHash["summary"][seed]["overall"] = {
-      "averageRatioInterruptCompute" => combined_mean_ratio.round(4),
-      "stdDevRatioInterruptCompute" => ratioInterruptComputes.standard_deviation.round(4),
+    # jsonHash["summary"][seed]["overall"] = {
+    #   "averageRatioInterruptCompute" => combined_mean_ratio.round(4),
+    #   "stdDevRatioInterruptCompute" => ratioInterruptComputes.standard_deviation.round(4),
 
-      "averageExecutionTime" => combined_mean_execution.round(4),
-      "stdDevExecutionTime" => executionTimes.standard_deviation.round(4),
-      "executionTimeUnit" => executionTimeUnit,
+    #   "averageExecutionTime" => combined_mean_execution.round(4),
+    #   "stdDevExecutionTime" => executionTimes.standard_deviation.round(4),
+    #   "executionTimeUnit" => executionTimeUnit,
 
-      "averageEnergyConsumption" => combined_mean_energy.round(4),
-      "PooledstdDevEnergyConsumption" => pooled_std_dev_energy.round(4),
-      "energyConsumptionUnit" => energy_consumption_unit, # mJ because we rescaled it once
-    }
+    #   "averageEnergyConsumption" => combined_mean_energy.round(4),
+    #   "PooledstdDevEnergyConsumption" => pooled_std_dev_energy.round(4),
+    #   "energyConsumptionUnit" => energy_consumption_unit, # mJ because we rescaled it once
+    # }
 
     jsonHash["summary"][seed]["singleTraversal"]= {
       "singleTraversalAverageExecutionTime" => (combined_mean_execution/nbActions).round(4),
@@ -190,6 +192,11 @@ def group_samples_by_seed(jsonHash, nbSamples, nbActions)
       "singleTraversalPooledstdDevEnergyConsumption" => ((pooled_std_dev_energy/Math.sqrt(nbActions))*1e3).round(4), # rescaling the unit
       "singleTraversalEnergyConsumptionUnit" => "uJ" # unit rescaled twice J -> uJ. 1J * 1e6 = 1000000uJ
     }
+
+    # Can be commented for insight on the calculus
+
+    # Remove the processed samples from jsonHash["samples"]
+    jsonHash["samples"].delete_if { |sample| sample["seed"] == seed }
   end
 end
 
