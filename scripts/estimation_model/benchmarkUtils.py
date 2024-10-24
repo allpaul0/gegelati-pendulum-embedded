@@ -165,6 +165,12 @@ class BenchmarkUtils:
 	# 	}
 	# }
 
+    # def bind_instrSet_dataType_to_seed(data: dic, instrSet_dataType: str):
+    #     binded_data = {}
+    #     for key in data:
+    #         binded_data[(instrSet_dataType, key)] = data[key]
+    #     return binded_data
+
     def import_graph_traversal_informations(self, graph_traversal_informations_folder):
 
         # Check if the graph_traversal_informations_folder directory exists
@@ -180,8 +186,8 @@ class BenchmarkUtils:
 
         # Loop through each subfolder (X, Y, Z)
         for subfolder in subfolders:
-
-            json_file_path = os.path.join(graph_traversal_informations_folder, subfolder, 'CodeGen', 'executionInfos.json')
+            print(subfolder)
+            json_file_path = os.path.join(graph_traversal_informations_folder, subfolder, 'training', 'executionInfos.json')
 
             # Check if the JSON file exists
             if os.path.exists(json_file_path):
@@ -189,9 +195,12 @@ class BenchmarkUtils:
                     # Open and read the JSON file
                     with open(json_file_path, 'r') as file:
                         data = json.load(file)
-                        
+
+                        # seed: {nbEvalProg, nbEvalTeams, ...} -> (double_base, seed): {nbEvalProg, nbEvalTeams, ...}
+                        binded_data = (lambda data, instrSet_dataType: {(instrSet_dataType, key): value for key, value in data.items()})(data, subfolder)
+
                         # Update dic_graph_traversal_informations with data from the current file
-                        dic_graph_traversal_informations.update(data)
+                        dic_graph_traversal_informations.update(binded_data)
                 except Exception as e:
                     print(f"Error reading {json_file_path}: {e}")
             else:
@@ -201,13 +210,15 @@ class BenchmarkUtils:
 
     # Graph traversal analysis
 
-    # "singleTraversal": {
-    #         "singleTraversalAverageExecutionTime": 71.628,
-    #         "singleTraversalStdDevExecutionTime": 0.0,
-    #         "singleTraversalexecutionTimeUnit": "us",
-    #         "singleTraversalAverageEnergyConsumption": 7.2036,
-    #         "singleTraversalPooledstdDevEnergyConsumption": 0.0,
-    #         "singleTraversalEnergyConsumptionUnit": "uJ"
+    # "1125898167": {
+    #     "singleTraversal": {
+    #     "singleTraversalAverageExecutionTime": 71.6283,
+    #     "singleTraversalStdDevExecutionTime": 0.0,
+    #     "singleTraversalexecutionTimeUnit": "us",
+    #     "singleTraversalAverageEnergyConsumption": 7.1353,
+    #     "singleTraversalPooledstdDevEnergyConsumption": 2.9851,
+    #     "singleTraversalEnergyConsumptionUnit": "uJ"
+    #     }
     # }
 
     def import_graph_traversal_analysis(self, graph_traversal_analysis_folder):
@@ -236,19 +247,14 @@ class BenchmarkUtils:
                         # Open and load the energy_data.json file
                         with open(energy_data_path, "r") as file:
                             energy_data = json.load(file)
-
-                        # Extract the 'singleTraversal' section from the energy_data.json file
-                        if 'summary' in energy_data:
-                            # print(energy_data['summary'].items())
-                            # singleTraversal in the value under the key: seed_number. It is itself a dic
-                            for seed_number, seed_data in energy_data['summary'].items():
-                                if 'singleTraversal' in seed_data:
-                                    # Store data by seed number and subfolder
-                                    dic_graph_traversal_analysis[(subfolder, seed_number)] = seed_data['singleTraversal']
-                                else:
-                                    print(f"No 'singleTraversal' section found for seed {seed_number} in {energy_data_path}")
-                        else:
-                            print(f"No 'summary' section found in {energy_data_path}")
+                            
+                        # singleTraversal in the value under the key: seed_number. It is itself a dic
+                        for seed_number, seed_data in energy_data.items():
+                            if 'singleTraversal' in seed_data:
+                                # Store data by seed number and subfolder
+                                dic_graph_traversal_analysis[(subfolder, seed_number)] = seed_data['singleTraversal']
+                            else:
+                                print(f"No 'singleTraversal' section found for seed {seed_number} in {energy_data_path}")
                     else:
                         print(f"energy_data.json not found in {inference_path}")
                 else:
@@ -257,3 +263,73 @@ class BenchmarkUtils:
                 print(f"Inference path does not exist or is not a directory for {subfolder}")
 
         return dic_graph_traversal_analysis
+
+    # ANSI escape code for RGB color (255, 165, 0), orange
+    def print_orange(self, text):
+        orange_color = "\033[38;2;255;165;0m"  # RGB for orange
+        reset_color = "\033[0m"
+        print(f"{orange_color}{text}{reset_color}")
+
+    def compute_graph_traversal_estimations(self, graph_traversal_informations: dict, 
+        instruction_level_analysis: dict, instructions: dict):
+
+        self.print_orange("div_double_asm_move_6reg_input1") #40 20
+        graph_traversal_estimations = {}
+        for key in graph_traversal_informations:
+            instrSet_dataType = key[0]
+            seed = key[1]
+            graph_traversal_estimations[key] = 0
+            for index, instruction in enumerate(instructions[instrSet_dataType]):
+                if key[0] == "int_add":
+                     graph_traversal_estimations[key] += \
+                    graph_traversal_informations[key]['nbExecutionForEachInstr'][str(index+1)] *\
+                    instruction_level_analysis[instruction]['singleInstructionExecutionTime']
+                else:
+                    graph_traversal_estimations[key] += \
+                    graph_traversal_informations[key]['nbExecutionForEachInstr'][str(index)] *\
+                    instruction_level_analysis[instruction]['singleInstructionExecutionTime']
+            graph_traversal_estimations[key] = round(graph_traversal_estimations[key], 4)
+        return graph_traversal_estimations
+
+    def display_estimations_observed(self, graph_traversal_analysis, graph_traversal_estimations):
+        for key in graph_traversal_analysis:
+            if graph_traversal_estimations.get(key[1]) is not None:
+                print("graph_traversal_analysis: " + str(round(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'],4)))
+                print("graph_traversal_estimations:" + str(round(graph_traversal_estimations[key[1]], 4)  ))
+                print("ratio:" + str(round(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'] / (graph_traversal_estimations[key[1]]), 4)) + "\n")
+
+    # Mean Squared Error (MSE): measures the average squared difference 
+    # between predicted values and the actual values in the dataset.
+    def MSE(self, observed_values :dict, predicted_values: dict, str_TPG_graph: str):
+        # if len(observed_values) != len(predicted_values):
+        #     raise ValueError("dict a and dict b must have the same length")
+        #     return 
+        n = 0
+        MSE = 0 
+        for key in observed_values:
+            if key[0] == str_TPG_graph and predicted_values.get(key) is not None:
+                # print(str(observed_values[key]['singleTraversalAverageExecutionTime']) + "  " + str(predicted_values[key[1]]))
+                MSE += pow((observed_values[key]['singleTraversalAverageExecutionTime'] - predicted_values[key]), 2)
+                n+=1
+        if n != 0:
+            MSE = round(MSE/n,4)
+        return MSE
+
+    # Mean Absolute Percentage Error (MAPE): common metric where the absolute error 
+    # between the estimated and observed values is expressed as a percentage of the 
+    # observed values, and then the average of these percentages is taken.
+    def MAPE(self, observed_values :dict, predicted_values: dict, str_TPG_graph: str):
+        # if len(observed_values) != len(predicted_values):
+        #     raise ValueError("dict a and dict b must have the same length")
+        #     return 
+        n = 0
+        MAPE = 0 
+        for key in observed_values:
+            if key[0] == str_TPG_graph and predicted_values.get(key) is not None:
+                observed = observed_values[key]['singleTraversalAverageExecutionTime'] 
+                predicted = predicted_values[key]
+                MAPE += abs((observed - predicted)/observed)
+                n+=1
+        if n != 0:
+            MAPE = round(MAPE/n,4)
+        return MAPE
