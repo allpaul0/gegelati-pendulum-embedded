@@ -52,7 +52,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define NB_SAMPLES 3
+#define NB_SAMPLES 1 //3
 
 /* USER CODE END PD */
 
@@ -70,7 +70,7 @@ PendulumExecutionEnvironment* pendulumEE_ptr;
 #if INSTRUCTION_LEVEL_ANALYSIS == 1
 uint16_t nbActions = 1;	// Number of actions per inference
 #else 
-uint16_t nbActions = 10000;
+uint16_t nbActions = 50000; //10000
 #endif
 double initAngle = 0.0;
 double initVelocity = 0.0;
@@ -162,7 +162,7 @@ int main(void)
 
 	// Reset pendulum environment and store the initial conditions
 #if GRAPH_LEVEL_ANALYSIS == 1
-  uint16_t nbSeeds = NB_SEEDS;
+    uint16_t nbSeeds = 100; //NB_SEED;
 	pendulumEE.reset(seeds[0]);
 #else
 	pendulumEE.reset(seed);
@@ -213,8 +213,15 @@ int main(void)
     std::cout << "TYPE_DOUBLE, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
 #endif
 
+    int ila = INSTRUCTION_LEVEL_ANALYSIS;
+    int gla = GRAPH_LEVEL_ANALYSIS;
+    int pt = PENDULUM_TRACE;
+    std::cout << "INSTRUCTION_LEVEL_ANALYSIS: " << ila
+              << "GRAPH_LEVEL_ANALYSIS: " << gla
+              << "PENDULUM_TRACE: " << pt << std::endl;
+
 #if GRAPH_LEVEL_ANALYSIS == 1
-    for(int idSeed=0; idSeed<3; idSeed++){
+    for(int idSeed=0; idSeed<5; idSeed++){
 #endif
       for(int idSample=0; idSample<NB_SAMPLES; idSample++){
         
@@ -230,9 +237,7 @@ int main(void)
         std::cout << "ITERATION_NUMBER : " << idSeed << std::endl;
         std::cout << "ID_SAMPLE : " << idSample << std::endl;
         std::cout << "NB_ACTIONS : " << nbActions << std::endl;
-#endif
-#if GRAPH_LEVEL_ANALYSIS == 1
-        pendulumEE_ptr->reset(seeds[idSeed]);
+        pendulumEE_ptr->reset(angles[idSeed], velocities[idSeed]);
 #endif
 
         /* Energy consumption measurements */

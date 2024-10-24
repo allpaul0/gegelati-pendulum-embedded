@@ -94,8 +94,9 @@ public:
 	virtual std::vector<std::reference_wrapper<const Data::DataHandler>> getDataSources() override;
 
 	/// Inherited via LearningEnvironment
-	virtual void reset(size_t seed = 0, 
-		Learn::LearningMode mode = Learn::LearningMode::TRAINING) override;
+	virtual void reset(size_t seed = 0, Learn::LearningMode mode = Learn::LearningMode::TRAINING) override;
+
+	virtual void reset(size_t seed, double *angle, double *velocity, Learn::LearningMode mode = Learn::LearningMode::TESTING);
 
 	void reset(double initalAngle, double initialVelocity);
 

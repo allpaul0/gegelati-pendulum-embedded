@@ -326,6 +326,8 @@ if stages["Measures"]
             system("cp #{src} #{dest}")
             checkExitstatus("cp src dest Measures 2")
         end
+
+        system("cp #{tpgDirName}/PreCalcul/seeds_nbActionsToTerminal.h PendulumEmbeddedSTMProject/Core/Inc/Pendulum/.")
             
         # === Compiling executable ===
       

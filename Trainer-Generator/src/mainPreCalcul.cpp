@@ -13,7 +13,8 @@
 // #define VERBOSE
 
 // Function to write data from two arrays to a CSV file
-void storeToCProgram(const std::string& filename, const unsigned int* seeds, const int* nbActionsToTerminal, size_t nbValues) {
+void storeToCProgram(const std::string& filename, const double* angles, const double* velocities, 
+    const unsigned int* seeds, const int* nbActionsToTerminal, size_t nbValues) {
     std::ofstream file(filename);
 
     if (!file.is_open()) {
@@ -27,10 +28,26 @@ void storeToCProgram(const std::string& filename, const unsigned int* seeds, con
 
         << "#define NB_SEED " << nbValues << "\n\n"
 
+        << "static const double angles[NB_SEED] = {";
+
+    // write content of angles array
+    size_t i;
+    for (i = 0; i < nbValues-1; ++i) {
+        file << angles[i] << ", "; 
+    }
+    file << angles[i] << "};\n"
+
+        << "static const double velocities[NB_SEED] = {";
+
+    // write content of velocities array
+    for (i = 0; i < nbValues-1; ++i) {
+        file << velocities[i] << ", "; 
+    }
+    file << velocities[i] << "};\n"
+
         << "static const unsigned int seeds[NB_SEED] = {";
 
     // write content of seeds array
-    size_t i;
     for (i = 0; i < nbValues-1; ++i) {
         file << seeds[i] << ", "; 
     }
@@ -95,6 +112,8 @@ int main(int argc, char *argv[]) {
 
     // Array to store the nbSeeds generated seeds
     unsigned int seeds[nbSeeds];
+    double angles[nbSeeds];
+    double velocities[nbSeeds];
 
     // Generate nbSeeds seeds using the initial seed
     for (int i = 0; i < nbSeeds; ++i) {
@@ -132,13 +151,12 @@ int main(int argc, char *argv[]) {
     TPG::TPGExecutionEngineInstrumented tee(env);
     const TPG::TPGVertex* root(tpgGraph.getRootVertices().back());
 
-
     /* TPG Inference */
 
     for(int j = 0; j < nbSeeds; j++){
 
         // set the inital pendulum conditions using the seed
-        pendulumLE.reset(seeds[j]);
+        pendulumLE.reset(seeds[j], &angles[j], &velocities[j], Learn::LearningMode::TESTING);
         
         //std::cout << "\tInitial parameter {Angle : " << initalAngle <<", Velocity : " << initialVelocity << "}" << std::endl;
 
@@ -148,6 +166,7 @@ int main(int argc, char *argv[]) {
 
             auto trace = tee.executeFromRoot(*root);
             uint64_t action = ((const TPG::TPGAction*)trace.back())->getActionID();
+            //uint64_t action = dynamic_cast<const TPG::TPGAction*>(trace.back())->getActionID();
             pendulumLE.doAction(action);
 
     #ifdef VERBOSE
@@ -169,7 +188,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Write data to CSV file
-    storeToCProgram("Results/seeds_nbActionsToTerminal.h", seeds, nbActionsToTerminal, nbSeeds);
+    storeToCProgram("Results/seeds_nbActionsToTerminal.h", angles, velocities, seeds, nbActionsToTerminal, nbSeeds);
 
     std::cout << "Data written to Results/seeds_nbActionsToTerminal.csv successfully." << std::endl;
 

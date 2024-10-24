@@ -43,6 +43,8 @@ Trainer-Generator/src/instructions.cpp
 Trash
 scripts/python/*
 scripts/estimation_model/__pycache__/*
+storage_TPG_10v/
+storage_microbenchmarks_int/
 
 # Others
 .vscode/

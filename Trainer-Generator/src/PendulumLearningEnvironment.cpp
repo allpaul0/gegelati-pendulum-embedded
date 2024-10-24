@@ -41,6 +41,23 @@ std::vector<std::reference_wrapper<const Data::DataHandler>> PendulumLearningEnv
 	return result;
 }
 
+void PendulumLearningEnvironment::reset(size_t seed, double *angle, double *velocity, Learn::LearningMode mode){
+	// Create seed from seed and mode
+	size_t hash_seed = Data::Hash<size_t>()(seed) ^ Data::Hash<Learn::LearningMode>()(mode);
+
+	// Reset the RNG
+	this->rng.setSeed(hash_seed);
+
+	*angle = this->rng.getDouble(-M_PI, M_PI);
+	*velocity = this->rng.getDouble(-1.0, 1.0);
+
+	// Set initial state
+	this->setAngle(*angle);
+	this->setVelocity(*velocity);
+	this->nbActionsExecuted = 0;
+	this->totalReward = 0.0;
+}
+
 void PendulumLearningEnvironment::reset(size_t seed, Learn::LearningMode mode)
 {
 	// Create seed from seed and mode
