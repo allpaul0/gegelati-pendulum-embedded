@@ -13,7 +13,6 @@
 
 int main(int argc, char *argv[]) {
 
-
     std::cout << "\033[1;33m=====[ Execution informations target ]=====\033[0m" << std::endl;
 
 #if TYPE_INT == 1
@@ -87,11 +86,15 @@ int main(int argc, char *argv[]) {
     // Prepare for inference
     TPG::TPGExecutionEngineInstrumented tee(env);
     const TPG::TPGVertex* root(tpgGraph.getRootVertices().back());
+    //const TPG::TPGTeamInstrumented* root = dynamic_cast<const TPG::TPGTeamInstrumented*>(tpgGraph.getRootVertices().back());
 
     /* Prepare to Execution informations extraction and export */
     TPG::ExecutionInfos executionInfos;
 
-    
+    //Annotate the graph for better understanding of the execution
+    executionInfos.assignIdentifiers((const TPG::TPGTeamInstrumented*)root);
+    //executionInfos.assignIdentifiers(root);
+
     /* TPG Inference */
 
     for(int j = 0; j < nbSeeds; j++){
@@ -99,7 +102,7 @@ int main(int argc, char *argv[]) {
         // std::cout << "\t Seed: " << seeds[j] 
 
         // set the inital pendulum conditions using the seed
-        pendulumLE.reset(seeds[j]);
+        pendulumLE.reset(seeds[j], Learn::LearningMode::TESTING);
        
         // execute one action, trace it, and move to the next seed.        
         tee.executeFromRoot(*root);
@@ -109,7 +112,7 @@ int main(int argc, char *argv[]) {
        
     executionInfos.writeInfosToJson((dotPath.parent_path().string() + "/../training/executionInfos.json").c_str());
 
-    //std::cout << "End program" << std::endl;
+    std::cout << "End program" << std::endl;
 
     return 0;
 }
