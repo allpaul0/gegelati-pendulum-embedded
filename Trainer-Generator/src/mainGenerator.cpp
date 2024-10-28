@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
         //std::cout << "Inference of original TPG" << std::endl;
         
         while(idActionsOrig[i] < nbActions && !pendulumLE.isTerminal()){
-            auto actionID = ((TPG::TPGAction*)(tee.executeFromRoot(*root).back()))->getActionID();
+            auto actionID = dynamic_cast<const TPG::TPGAction*>(tee.executeFromRoot(*root).back())->getActionID();
             pendulumLE.doAction(actionID);
             ofs << idActionsOrig[i] << " " << actionID << std::endl;
             idActionsOrig[i]++;
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
         
         //std::cout << "Inference of cleaned TPG code" << std::endl;
         while(idActionsPruned[i] < nbActions && !pendulumLE.isTerminal()){
-            auto actionID = ((TPG::TPGAction*)(tee.executeFromRoot(*root).back()))->getActionID();
+            auto actionID = dynamic_cast<const TPG::TPGAction*>(tee.executeFromRoot(*root).back())->getActionID();
             pendulumLE.doAction(actionID);
             ofs2 << idActionsPruned[i] << " " << actionID << std::endl;
             idActionsPruned[i]++;
