@@ -86,7 +86,6 @@ int main(int argc, char *argv[]) {
     // Prepare for inference
     TPG::TPGExecutionEngineInstrumented tee(env);
     const TPG::TPGVertex* root(tpgGraph.getRootVertices().back());
-    //const TPG::TPGTeamInstrumented* root = dynamic_cast<const TPG::TPGTeamInstrumented*>(tpgGraph.getRootVertices().back());
 
     /* Prepare to Execution informations extraction and export */
     TPG::ExecutionInfos executionInfos;

@@ -104,11 +104,20 @@ int main(int argc, char *argv[]) {
 
     /***** Play the game once to identify useful edges & vertices (TPG Inference) *****/
 
-    for(int i=0; i<nbSeeds; i++){
-        
-        // reset Learning Environment, counter
-        pendulumLE.reset(seeds[i]);
 
+     Data::Hash<uint64_t> hasher;
+    // uint64_t hash = hasher(4);
+    // std::cout << "hash: " << hash << std::endl;
+    // uint64_t training = Data::Hash<Learn::LearningMode>()(Learn::LearningMode::TRAINING);
+    // uint64_t validation = Data::Hash<Learn::LearningMode>()(Learn::LearningMode::VALIDATION);
+    // uint64_t testing = Data::Hash<Learn::LearningMode>()(Learn::LearningMode::TESTING);
+
+    // std::cout << "TRAINING: " << training << ", " << (hash ^ training) << std::endl;
+    // std::cout << "VALIDATION: " << validation << ", " << (hash ^ validation) << std::endl;
+    // std::cout << "TESTING: " << testing << ", " << (hash ^ testing) << std::endl;
+
+    for(int i=0; i<nbSeeds; i++){ //nbSeeds
+        
         auto resultsOrig = la.evaluateAllRoots(i, Learn::LearningMode::VALIDATION);
 
         auto val = resultsOrig.begin()->first->getResult();

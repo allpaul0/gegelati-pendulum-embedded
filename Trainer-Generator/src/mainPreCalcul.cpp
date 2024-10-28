@@ -166,7 +166,6 @@ int main(int argc, char *argv[]) {
 
             auto trace = tee.executeFromRoot(*root);
             uint64_t action = ((const TPG::TPGAction*)trace.back())->getActionID();
-            //uint64_t action = dynamic_cast<const TPG::TPGAction*>(trace.back())->getActionID();
             pendulumLE.doAction(action);
 
     #ifdef VERBOSE
