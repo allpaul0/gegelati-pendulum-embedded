@@ -108,6 +108,8 @@ int main(int argc, char *argv[]) {
 
         executionInfos.analyzeExecution(tee, tpgGraph, seeds[j]);
     }
+
+    executionInfos.writeTPGtoJson((dotPath.parent_path().string() + "/../training/tpgInfos.json").c_str());
        
     executionInfos.writeInfosToJson((dotPath.parent_path().string() + "/../training/executionInfos.json").c_str());
 
