@@ -61,74 +61,45 @@ for key in graph_traversal_analysis:
     graph_traversal_analysis[key]['singleTraversalexecutionTimeUnit'] = "ns"
 
 
-# compute sklearn MSE
+# Helper function to print observations and estimaties
+def print_observation(key, observed, estimatedP, estimatedT, benchmark=None, display=True):
+    if display:
+        print(f"{key}: observed: {observed}, estimated for programs: {estimatedP}, estimated for teams: {estimatedT}")
+        if benchmark:
+            print(f"{benchmark}\n")
 
+# Function to calculate metrics and display results
+def calculate_metrics(y_true, y_pred, label):
+    mse = round(mean_squared_error(y_true, y_pred), 4)
+    mape = round(mean_absolute_percentage_error(y_true, y_pred), 4)
+    print(f"{label} - MSE: {mse}, MAPE: {mape}")
 
+# General evaluation function 
+def evaluate_case(graph_traversal_analysis, graph_traversal_estimations, graph_traversal_benchmarks_mc, label, display=True):
+    y_true, y_pred = [], []
+    for key, value in graph_traversal_analysis.items():
+        # key[0] is data_type_instr_set, key[1] is the seed for this estimation
+        if key[0] == label and (estimation := graph_traversal_estimations.get(key)) is not None:
+            observed = value['singleTraversalAverageExecutionTime']
+            predictedP = estimation['program_latency']
+            predictedT = estimation['team_latency']
+            y_true.append(observed)
+            y_pred.append(predictedP + predictedT)
+            print_observation(key, observed, predictedP, predictedT, graph_traversal_benchmarks_mc.get(key), display)
+    calculate_metrics(y_true, y_pred, label)
 
-# int 
+# Example calls with different configurations
+# evaluate_case(graph_traversal_analysis, graph_traversal_estimations, graph_traversal_benchmarks_mc, "int_base",)
 
-# y_pred, y_true = [], []
-# display = 1
+evaluate_case(graph_traversal_analysis, graph_traversal_estimations, graph_traversal_benchmarks_mc, "double_base", display=True)
 
-# for key, value in graph_traversal_analysis.items():
-#     if key[0] == "int_base" and graph_traversal_estimations.get(key) is not None:
-#         y_true.append(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'])
-#         y_pred.append(graph_traversal_estimations[key])
-#         if display == 1:
-#             print(str(key) + ": " + "observed: " + \
-#                 str(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime']) + " " + \
-#                 ", estimated: " + str(graph_traversal_estimations[key]))
-#             print(str(graph_traversal_benchmarks_mc[key]) + "\n")
-# print("int")
-# print(round(mean_squared_error(y_true, y_pred),4))
-# print(round(mean_absolute_percentage_error(y_true, y_pred),4))
-
-
-
-# double
-
-y_pred_prog, y_true = [], []
-display = 1
-for key, value in graph_traversal_analysis.items():
-    if key[0] == "double_base" and graph_traversal_estimations.get(key) is not None:
-        y_true.append(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'])
-        y_pred_prog.append(graph_traversal_estimations[key]['program_latency'] + \
-            graph_traversal_estimations[key]['team_latency'])
-        if display == 1:
-            print(str(key) + ": " + "observed: " + \
-                str(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime']) + " " + \
-                ", estimated for programs: " + str(graph_traversal_estimations[key]['program_latency']) + \
-                ", estimated for teams: " + str(graph_traversal_estimations[key]['team_latency']) + \
-                ", estimation: " + str(round(graph_traversal_estimations[key]['program_latency'] + graph_traversal_estimations[key]['team_latency'], 4)))
-            print(str(graph_traversal_benchmarks_mc[key]) + "\n")
-print("double")
-print(round(mean_squared_error(y_true, y_pred_prog),4))
-print(round(mean_absolute_percentage_error(y_true, y_pred_prog),4))
-
-
-
-# int add
-
-y_pred, y_true = [], []
-display = 0
-# for key, value in graph_traversal_analysis.items():
-#     if key[0] == "int_add" and graph_traversal_estimations.get(key) is not None:
-#         y_true.append(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'])
-#         y_pred.append(graph_traversal_estimations[key])
-#         if display == 1:
-#             print(str(key) + ": " + "observed: " + \
-#                 str(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime']) + " " + \
-#                 ", estimated: " + str(graph_traversal_estimations[key]))
-# print("int_add")
-# print(round(mean_squared_error(y_true, y_pred),4))
-# print(round(mean_absolute_percentage_error(y_true, y_pred),4))
-
+evaluate_case(graph_traversal_analysis, graph_traversal_estimations,  graph_traversal_benchmarks_mc, "int_add", display=True)
 
 
 # optimize O0
 
-y_pred, y_true = [], []
-display = 1
+# y_pred, y_true = [], []
+# display = 1
 # for key, value in graph_traversal_analysis.items():
 #     if key[0] == "int_base_optimize_O0" and graph_traversal_estimations.get(key) is not None:
 #         y_true.append(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'])
@@ -146,8 +117,8 @@ display = 1
 
 # optimize O3, optimizeO0
 
-y_pred_O3, y_pred_O0 = [], []
-display = 1
+# y_pred_O3, y_pred_O0 = [], []
+# display = 1
 # for key, value in graph_traversal_analysis.items():
 #     if key[0] == "int_base_optimize_O0" and graph_traversal_analysis.get(("int_base", key[1])) is not None:
 #         y_pred_O0.append(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'])
