@@ -46,6 +46,7 @@ scripts/estimation_model/__pycache__/*
 storage_TPG_10v/
 storage_microbenchmarks_int/
 my_venv/
+scripts/estimation_model/depot_code.py
 
 # Others
 .vscode/

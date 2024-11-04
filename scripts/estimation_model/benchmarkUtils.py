@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
 
 class BenchmarkUtils:
     def __init__(self, base_path):
@@ -20,7 +21,7 @@ class BenchmarkUtils:
                 folder_date = datetime.strptime(folder, date_format)
                 date_folders.append((folder_date, folder))
             except ValueError:
-                print(f"Skipping folder {folder}: Incorrect date format.")
+                self.print_colored(f"Skipping folder {folder}: Incorrect date format.", "red")
                 continue
         
         if not date_folders:
@@ -36,12 +37,12 @@ class BenchmarkUtils:
         tpg_folder_path = os.path.join(self.base_path, base_folder, folder_name, sub_dir)
         
         if not os.path.exists(tpg_folder_path):
-            print(f"Path does not exist: {tpg_folder_path}")
+            self.print_colored(f"Path does not exist: {tpg_folder_path}", "red")
             return None
         
         folder_listdir = os.listdir(tpg_folder_path)
         if not folder_listdir:
-            print(f"No subfolders found in: {tpg_folder_path}")
+            self.print_colored(f"No subfolders found in: {tpg_folder_path}", "red")
             return None
         
         most_recent_folder = self.find_most_recent_folder(folder_listdir)
@@ -72,17 +73,17 @@ class BenchmarkUtils:
 
                 return data
         except FileNotFoundError:
-            print(f"File not found: {file_path}")
+            self.print_colored(f"File not found: {file_path}", "red")
             return {}
         except json.JSONDecodeError:
-            print(f"Error decoding JSON from file: {file_path}")
+            self.print_colored(f"Error decoding JSON from file: {file_path}", "red")
             return {}
 
 
     def print_folder_data(self, folder_name, data_dict, print_all=False):
         data = data_dict.get(folder_name, {})
         if not data:
-            print(f"No data found for folder: {folder_name}")
+            self.print_colored(f"No data found for folder: {folder_name}", "red")
             return
         
         if print_all:
@@ -109,7 +110,7 @@ class BenchmarkUtils:
    
         # Check if the instructions_folder_path directory exists
         if not os.path.exists(instructions_folder_path):
-            print(f"Error: The instructions_folder_path does not exist: {instructions_folder_path}")
+            self.print_colored(f"Error: The instructions_folder_path does not exist: {instructions_folder_path}", "red")
             exit(1)
 
         # Get the list of subfolders (X, Y, Z, etc.) in the instructions_folder_path folder
@@ -138,7 +139,6 @@ class BenchmarkUtils:
                         
                         # Extract the 'singleInstruction' section from the energy_data.json file
                         if 'summary' in energy_data and 'singleInstruction' in energy_data['summary']:
-                            #print(energy_data['summary'])
                             # singleInstruction is a key, it can be referenced direclty
                             dic_instruction_level_analysis[subfolder] = energy_data['summary']['singleInstruction']
                         else:
@@ -153,7 +153,7 @@ class BenchmarkUtils:
         return dic_instruction_level_analysis
 
 
-    # shape of Graph traversal beanchmarks mc 
+    # shape of Graph traversal informations
 
     # "1059961393" : 
 	# {
@@ -175,15 +175,15 @@ class BenchmarkUtils:
     #         binded_data[(instrSet_dataType, key)] = data[key]
     #     return binded_data
 
-    def import_graph_traversal_benchmarks_mc(self, tpg_folder_path):
+    def import_graph_informations(self, tpg_folder_path):
 
         # Check if the tpg_folder_path directory exists
         if not os.path.exists(tpg_folder_path):
-            print(f"Error: The tpg_folder_path does not exist: {tpg_folder_path}")
+            self.print_colored(f"Error: The tpg_folder_path does not exist: {tpg_folder_path}", "red")
             exit(1)
 
         # Initialize an empty dictionary to store traversal information
-        dic_graph_traversal_benchmarks_mc = {}
+        dic_graph_informations = {}
 
         # Get the list of subfolders (X, Y, Z, etc.) in the tpg folder
         subfolders = [item for item in os.listdir(tpg_folder_path) if os.path.isdir(os.path.join(tpg_folder_path, item))]
@@ -203,14 +203,14 @@ class BenchmarkUtils:
                         # seed: {nbEvalProg, nbEvalTeams, ...} -> (double_base, seed): {nbEvalProg, nbEvalTeams, ...}
                         binded_data = (lambda data, instrSet_dataType: {(instrSet_dataType, key): value for key, value in data.items()})(data, subfolder)
 
-                        # Update dic_graph_traversal_benchmarks_mc with data from the current file
-                        dic_graph_traversal_benchmarks_mc.update(binded_data)
+                        # Update dic_graph_informations with data from the current file
+                        dic_graph_informations.update(binded_data)
                 except Exception as e:
-                    print(f"Error reading {json_file_path}: {e}")
+                    self.print_colored(f"Error reading {json_file_path}: {e}", "red")
             else:
-                print(f"No executionInfos.json found in {json_file_path}.")
+                self.print_colored(f"No executionInfos.json found in {json_file_path}.", "red")
 
-        return dic_graph_traversal_benchmarks_mc
+        return dic_graph_informations
 
 
     # Shape of graph traversal analysis
@@ -259,17 +259,34 @@ class BenchmarkUtils:
                                 # Store data by seed number and subfolder
                                 dic_graph_traversal_analysis[(subfolder, seed_number)] = seed_data['singleTraversal']
                             else:
-                                print(f"No 'singleTraversal' section found for seed {seed_number} in {energy_data_path}")
+                                self.print_colored(f"No 'singleTraversal' section found for seed {seed_number} in {energy_data_path}", "red")
                     else:
-                        print(f"energy_data.json not found in {inference_path}")
+                        self.print_colored(f"energy_data.json not found in {inference_path}", "red")
                 else:
-                    print(f"No recent folder found in {inference_path}")
+                    self.print_colored(f"No recent folder found in {inference_path}", "red")
             else:
-                print(f"Inference path does not exist or is not a directory for {subfolder}")
+                self.print_colored(f"Inference path does not exist or is not a directory for {subfolder}", "red")
+
+        # rescale data from graph traversal analysis
+        if dic_graph_traversal_analysis:
+            for key in dic_graph_traversal_analysis:
+                # time
+                dic_graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'] = \
+                    round(dic_graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'] * 1000, 4)
+                dic_graph_traversal_analysis[key]['singleTraversalStdDevExecutionTime'] = \
+                    round(dic_graph_traversal_analysis[key]['singleTraversalStdDevExecutionTime'] * 1000, 4) 
+                dic_graph_traversal_analysis[key]['singleTraversalexecutionTimeUnit'] = "ns"
+                
+                # energy
+                dic_graph_traversal_analysis[key]['singleTraversalAverageEnergyConsumption'] = \
+                    round(dic_graph_traversal_analysis[key]['singleTraversalAverageEnergyConsumption'] * 1000, 4)
+                dic_graph_traversal_analysis[key]['singleTraversalPooledstdDevEnergyConsumption'] = \
+                    round(dic_graph_traversal_analysis[key]['singleTraversalPooledstdDevEnergyConsumption'] * 1000, 4)
+                dic_graph_traversal_analysis[key]['singleTraversalEnergyConsumptionUnit'] = "nJ"
 
         return dic_graph_traversal_analysis
 
-
+    # retrieve TPG infos from JSON file generated by executionInfos 
     def import_tpg_infos(self, tpg_folder_path):
         # Initialize an empty dictionary to store tpg infos
         dic_tpg_infos = {}
@@ -298,9 +315,9 @@ class BenchmarkUtils:
                         # Store data in dic_tpg_infos
                         dic_tpg_infos[subfolder][teamNumber] = nbOutgoingEdges
                 else:
-                    print(f"tpgInfos.json not found in {training_path}")
+                    self.print_colored(f"tpgInfos.json not found in {training_path}", "red")
             else:
-                print(f"Training path does not exist or is not a directory for {subfolder}")
+                self.print_colored(f"Training path does not exist or is not a directory for {subfolder}", "red")
 
         # Return the dictionary
         return dic_tpg_infos
@@ -322,7 +339,7 @@ class BenchmarkUtils:
         print(f"{color_code}{text}{reset_color}")
 
 
-
+    # compute using estimation model
     def compute_graph_traversal_estimations(self, graph_traversal_informations: dict, 
         instruction_level_analysis: dict, instructions: dict, dic_tpg_infos: dict):
 
@@ -370,51 +387,51 @@ class BenchmarkUtils:
             #print(traceTIds_nbOutgEdges)
                         
             # Predict the corresponding y value for the new x (traceTIds_nbOutgEdges)
-            graph_traversal_estimations[key]['team_latency'] += round(model.predict(np.array(traceTIds_nbOutgEdges).reshape(-1,1)).sum()*1e3, 4)
+            graph_traversal_estimations[key]['team_latency'] += round(float(model.predict(np.array(traceTIds_nbOutgEdges).reshape(-1,1)).sum()*1e3), 4)
     
         return graph_traversal_estimations
 
+    # check if number of key and each key id are the same 
+    def check_keys(self, graph_traversal_analysis, graph_informations):
+        if len(graph_traversal_analysis.keys()) != len(graph_informations.keys()):
+            raise ValueError("length of graph_traversal_analysis : " + \
+                str(len(graph_traversal_analysis.keys())) + \
+                "differ from length of graph_informations : " + \
+                str(len(graph_informations.keys())))
+        for key in graph_traversal_analysis.keys():
+            if graph_informations.get(key) is None:
+                raise ValueError("graph_traversal_analysis, graph_informations: \
+                    the keys differ: " + str(key))
 
-    def display_estimations_observed(self, graph_traversal_analysis, graph_traversal_estimations):
-        for key in graph_traversal_analysis:
-            if graph_traversal_estimations.get(key[1]) is not None:
-                print("graph_traversal_analysis: " + str(round(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'],4)))
-                print("graph_traversal_estimations:" + str(round(graph_traversal_estimations[key[1]], 4)  ))
-                print("ratio:" + str(round(graph_traversal_analysis[key]['singleTraversalAverageExecutionTime'] / (graph_traversal_estimations[key[1]]), 4)) + "\n")
+    # Helper function to print observations and estimaties
+    def print_observation(self, key, observed, observed_unit, predictedP, predictedT, predictedP_ratio, predictedT_ratio, graph_informations=None, display=True):
+        if display:
+            print(f"{key}: Observed: {observed} {observed_unit}, Predicted_Prog: {predictedP} {observed_unit} ({predictedP_ratio}%), Predicted_Team: {predictedT} {observed_unit} ({predictedT_ratio}%)")
+            if graph_informations:
+                print(f"{graph_informations}\n")
 
+    # Function to calculate metrics and display results
+    def calculate_metrics(self, y_true, y_pred, label):
+        mse = round(mean_squared_error(y_true, y_pred), 4)
+        mape = round(mean_absolute_percentage_error(y_true, y_pred), 4)
+        print(f"{label} - MSE: {mse}, MAPE: {mape}")
 
-    # Mean Squared Error (MSE): measures the average squared difference 
-    # between predicted values and the actual values in the dataset.
-    def MSE(self, observed_values :dict, predicted_values: dict, str_TPG_graph: str):
-        # if len(observed_values) != len(predicted_values):
-        #     raise ValueError("dict a and dict b must have the same length")
-        #     return 
-        n = 0
-        MSE = 0 
-        for key in observed_values:
-            if key[0] == str_TPG_graph and predicted_values.get(key) is not None:
-                # print(str(observed_values[key]['singleTraversalAverageExecutionTime']) + "  " + str(predicted_values[key[1]]))
-                MSE += pow((observed_values[key]['singleTraversalAverageExecutionTime'] - predicted_values[key]), 2)
-                n+=1
-        if n != 0:
-            MSE = round(MSE/n,4)
-        return MSE
+    # General evaluation function 
+    def evaluate_case(self, graph_traversal_analysis, graph_traversal_estimations, graph_informations, label, display=True):
+        y_true, y_pred = [], []
+        for key, value in graph_traversal_analysis.items():
+            # key[0] is data_type_instr_set, key[1] is the seed for this estimation 
+            if key[0] == label and (estimation := graph_traversal_estimations.get(key)) is not None:
+                observed = value['singleTraversalAverageExecutionTime']
+                observed_unit = value['singleTraversalexecutionTimeUnit']
+                
+                predictedP = estimation['program_latency']
+                predictedT = estimation['team_latency']
 
-    # Mean Absolute Percentage Error (MAPE): common metric where the absolute error 
-    # between the estimated and observed values is expressed as a percentage of the 
-    # observed values, and then the average of these percentages is taken.
-    def MAPE(self, observed_values :dict, predicted_values: dict, str_TPG_graph: str):
-        # if len(observed_values) != len(predicted_values):
-        #     raise ValueError("dict a and dict b must have the same length")
-        #     return 
-        n = 0
-        MAPE = 0 
-        for key in observed_values:
-            if key[0] == str_TPG_graph and predicted_values.get(key) is not None:
-                observed = observed_values[key]['singleTraversalAverageExecutionTime'] 
-                predicted = predicted_values[key]
-                MAPE += abs((observed - predicted)/observed)
-                n+=1
-        if n != 0:
-            MAPE = round(MAPE/n,4)
-        return MAPE
+                predictedP_ratio = round(predictedP * 100 / observed, 1)
+                predictedT_ratio = round(predictedT * 100 / observed, 1)
+
+                y_true.append(observed)
+                y_pred.append(predictedP + predictedT)
+                self.print_observation(key, observed, observed_unit, predictedP, predictedT, predictedP_ratio, predictedT_ratio, graph_informations.get(key), display)
+        self.calculate_metrics(y_true, y_pred, label)
