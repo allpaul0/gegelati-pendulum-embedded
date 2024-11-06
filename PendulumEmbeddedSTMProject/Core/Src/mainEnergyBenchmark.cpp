@@ -68,9 +68,11 @@
 
 PendulumExecutionEnvironment* pendulumEE_ptr;
 #if INSTRUCTION_LEVEL_ANALYSIS == 1
-uint16_t nbActions = 1;	// Number of actions per inference
-#else 
-uint16_t nbActions = 50000; //10000
+    uint32_t nbActions = 1;  // Number of actions per inference
+#elif INSTRUCTION_LEVEL_ANALYSIS == 0 && GRAPH_LEVEL_ANALYSIS == 1 &&  TYPE_INT == 1
+    uint32_t nbActions = 500000;  // Set nbActions to 500000 if TYPE_INT is 1
+#elif INSTRUCTION_LEVEL_ANALYSIS == 0 && GRAPH_LEVEL_ANALYSIS == 1 &&  TYPE_INT == 0
+    uint32_t nbActions = 50000;   // Default to 50000 if TYPE_INT is not 1
 #endif
 double initAngle = 0.0;
 double initVelocity = 0.0;

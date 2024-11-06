@@ -25,7 +25,12 @@ def perform_linear_regression(x_values, y_values, new_x):
 
 # Example usage:
 x_values = [1, 2, 3, 4, 5]
-y_values = [0.5717, 3.216, 4.7406, 6.2652, 7.7898]
+
+y_values_double1 = [0.5717, 3.216, 4.7406, 6.2652, 7.7898]
+y_values_double2 = [0.5718, 3.2756, 4.8597, 6.4795, 8.0043]
+
+y_values_int2 = [0.5241, 1.3102, 1.7033, 2.0964, 2.418]
+
 new_x = 5.0
-predicted_y = perform_linear_regression(x_values, y_values, new_x)
-perform_linear_regression(x_values, y_values, 3.5)
+predicted_y = perform_linear_regression(x_values, y_values_double2, new_x)
+perform_linear_regression(x_values, y_values_double2, 3.5)
