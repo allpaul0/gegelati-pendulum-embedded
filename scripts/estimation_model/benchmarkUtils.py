@@ -5,6 +5,7 @@ from datetime import datetime
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
+from spearman import Spearman
 
 class BenchmarkUtils:
     def __init__(self, base_path):
@@ -419,6 +420,7 @@ class BenchmarkUtils:
     # General evaluation function 
     def evaluate_case(self, graph_traversal_analysis, graph_traversal_estimations, graph_informations, label, display=True):
         y_true, y_pred = [], []
+        observations, predictionsP, predictionsT = [], [], []
         for key, value in graph_traversal_analysis.items():
             # key[0] is data_type_instr_set, key[1] is the seed for this estimation 
             if key[0] == label and (estimation := graph_traversal_estimations.get(key)) is not None:
@@ -428,10 +430,34 @@ class BenchmarkUtils:
                 predictedP = estimation['program_latency']
                 predictedT = estimation['team_latency']
 
+                observations.append(observed)
+                predictionsP.append(predictedP)
+                predictionsT.append(predictedT)
+
                 predictedP_ratio = round(predictedP * 100 / observed, 1)
                 predictedT_ratio = round(predictedT * 100 / observed, 1)
 
                 y_true.append(observed)
                 y_pred.append(predictedP + predictedT)
                 self.print_observation(key, observed, observed_unit, predictedP, predictedT, predictedP_ratio, predictedT_ratio, graph_informations.get(key), display)
+        
+        sp = Spearman()
+        tolerance_percentage = 5
+
+        spearman_rho_P = round(sp.spearman_rank_correlation_with_percentage_tolerance(observations, predictionsP, tolerance_percentage), 4)
+        print("Programs, Spearman's rank correlation, tolerance(" + str(tolerance_percentage) + "%):", spearman_rho_P)
+
+        spearman_rho_T = round(sp.spearman_rank_correlation_with_percentage_tolerance(observations, predictionsT, tolerance_percentage), 4)
+        print("Teams, Spearman's rank correlation, tolerance(" + str(tolerance_percentage) + "%):", spearman_rho_T)
+
+        print()
+        tolerance = 100 # ns 
+
+        spearman_rho_P = round(sp.spearman_rank_correlation(observations, predictionsP, tolerance), 4)
+        print("Programs, Spearman's rank correlation, tolerance(" + str(tolerance) + " ns):", spearman_rho_P)
+
+        spearman_rho_T = round(sp.spearman_rank_correlation(observations, predictionsT, tolerance), 4)
+        print("Teams, Spearman's rank correlation, tolerance(" + str(tolerance) + " ns):", spearman_rho_T)
+        print()
+
         self.calculate_metrics(y_true, y_pred, label)
