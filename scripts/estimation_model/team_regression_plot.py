@@ -2,11 +2,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
-# Provided y and x values
-y_values_double1 = np.array([0.5717, 3.216, 4.7406, 6.2652, 7.7898]).reshape(-1, 1)
-y_values_double2 = np.array([0.5718, 3.2756, 4.8597, 6.4795, 8.0043]).reshape(-1, 1)
-y_values_int2 = np.array([0.5241, 1.3102, 1.7033, 2.0964, 2.418]).reshape(-1, 1)
-x = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
+# # Provided y and x values
+# y_values_double1 = np.array([0.5717, 3.216, 4.7406, 6.2652, 7.7898]).reshape(-1, 1)
+# y_values_double2 = np.array([0.5718, 3.2756, 4.8597, 6.4795, 8.0043]).reshape(-1, 1)
+# y_values_int2 = np.array([0.5241, 1.3102, 1.7033, 2.0964, 2.418]).reshape(-1, 1)
+# x = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
+
+y_values_double1 = np.array([3.216, 4.7406, 6.2652, 7.7898]).reshape(-1, 1)
+y_values_double2 = np.array([3.2756, 4.8597, 6.4795, 8.0043]).reshape(-1, 1)
+y_values_int2 = np.array([1.3102, 1.7033, 2.0964, 2.418]).reshape(-1, 1)
+x = np.array([2, 3, 4, 5]).reshape(-1, 1)
+
 
 # Initialize linear regression models
 lin_reg_double1 = LinearRegression()

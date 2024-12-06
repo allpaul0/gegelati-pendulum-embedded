@@ -40,5 +40,6 @@ graph_traversal_estimations = utils.compute_graph_traversal_estimations(graph_in
 
 # Example calls with different configurations
 utils.evaluate_case(graph_traversal_analysis, graph_traversal_estimations, graph_informations, "int_base", display=False)
+print()
 utils.evaluate_case(graph_traversal_analysis, graph_traversal_estimations, graph_informations, "double_base", display=False)
 # utils.evaluate_case(graph_traversal_analysis, graph_traversal_estimations,  graph_informations, "int_add", display=False)
