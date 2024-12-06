@@ -1,5 +1,6 @@
 require 'json'
 require 'descriptive_statistics'
+require 'pp'
 
 # Instruction-level log to JSON
 def graphLevelLogToJson(logPath, jsonPath, input_seed = nil)
@@ -68,10 +69,19 @@ def graphLevelLogToJson(logPath, jsonPath, input_seed = nil)
     end
   end
 
-
+  puts "jsonHash[\"samples\"].size: #{jsonHash["samples"].size}"
   calculate_averages_and_summary(jsonHash, nbSamples, nbActions)
 
-  # puts JSON.pretty_generate(jsonHash["summary"])
+  # for debug purpose
+  # Path to save the raw JSON hash for debugging
+  debug_path = "debug_json_hash.txt"
+
+  # Write the raw hash to a file
+  File.open(debug_path, 'w') do |f|
+    PP.pp(jsonHash, f)
+  end
+
+  # puts JSON.pretty_generate(jsonHash["summary"])
 
   File.write(jsonPath, JSON.pretty_generate(jsonHash["summary"]))
 
@@ -80,8 +90,12 @@ end
 
 def calculate_averages_and_summary(jsonHash, nbSamples, nbActions)
   jsonHash["samples"].each do |section|
-    next unless section.is_a?(Hash) && !section["current"].nil?
-
+    unless section.is_a?(Hash) && !section["current"].nil?
+      puts "Error: Section is not a valid Hash or 'current' key is missing. Section: #{section.inspect}"
+      next
+    end
+    
+    # init is -1, it should be deleted when present
     section["step"].each.with_index.reverse_each do |s, idx|
       if s < 0
         section["step"].delete_at(idx)
@@ -92,8 +106,8 @@ def calculate_averages_and_summary(jsonHash, nbSamples, nbActions)
 
     # section["averageCurrent"] = section["current"].mean # not used
     section["averagePower"] = section["power"].mean
-    section["stdDevCurrent"] = section["current"].standard_deviation
-    section["stdDevPower"] = section["power"].standard_deviation
+    section["stdDevCurrent"] = standard_deviation_sample(section["current"])
+    section["stdDevPower"] = standard_deviation_sample(section["power"])
     section["sumPower"] = section["power"].sum
 
     # retrieve timeUnit
@@ -108,7 +122,7 @@ def calculate_averages_and_summary(jsonHash, nbSamples, nbActions)
     #                          = sum(0.66, 0.72, ...) * 0.003
     # Watts * seconds = Joules -> rescaled to mJ. (1 J * 1e3 = 1000 mJ)
     section["energyConsumption"] = section["power"].sum * measureStepTime * 1e3 
-    section["stdDevEnergyConsumption"] = section["power"].standard_deviation * measureStepTime * 1e3
+    section["stdDevEnergyConsumption"] = standard_deviation_sample(section["power"]) * measureStepTime * 1e3
     section["energyConsumptionUnit"] = "mJ" # Joules rescaled to milliJoules 
 
     # retrieve size for pooled_standard_deviation calculation
@@ -121,6 +135,7 @@ def calculate_averages_and_summary(jsonHash, nbSamples, nbActions)
     section.delete("current")
     section.delete("power")
   end
+
 
   group_samples_by_seed(jsonHash, nbSamples, nbActions)
 end
@@ -141,11 +156,32 @@ def adjust_measurement_time(timeUnit, timeMultiplier)
   end
 end
 
+# finds stdDev for a sample, I have measured a subset of possible occurrences
+# on the board
+def standard_deviation_sample(numbers) 
+  # Convert strings to floats
+  numbers = numbers.map(&:to_f)
+
+  # Return 0 if there's only one value
+  return 0 if numbers.size <= 1
+
+  # Step 1: Calculate the mean
+  mean = numbers.sum.to_f / numbers.size
+  
+  # Step 2: Calculate the variance
+  variance = numbers.map { |n| (n - mean) ** 2 }.sum / (numbers.size - 1)
+  
+  # Step 3: Calculate the standard deviation
+  Math.sqrt(variance)
+end
+
+
 def group_samples_by_seed(jsonHash, nbSamples, nbActions)
 
   executionTimeUnit = get_executionTimeUnit(jsonHash)
 
   grouped_by_seed = jsonHash["samples"].group_by { |sample| sample["seed"] }
+
 
   grouped_by_seed.each do |seed, samples|
     # Gather data for calculations
@@ -162,41 +198,43 @@ def group_samples_by_seed(jsonHash, nbSamples, nbActions)
     combined_mean_energy = energyConsumptions.mean
 
     # Calculate pooled standard deviations
-    pooled_std_dev_energy = pooled_standard_deviation(sizes, energyConsumptions, std_devs_energy)
+    # pooled_std_dev_energy = pooled_standard_deviation(sizes, energyConsumptions, std_devs_energy)
 
     jsonHash["summary"][seed] = {}
 
     # Can be decommented for insight on the calculus
 
-    # Update summary with grouped data
+    # Update summary with grouped data
     # jsonHash["summary"][seed]["overall"] = {
     #   "averageRatioInterruptCompute" => combined_mean_ratio.round(4),
-    #   "stdDevRatioInterruptCompute" => ratioInterruptComputes.standard_deviation.round(4),
+    #   "stdDevRatioInterruptCompute" => standard_deviation_sample(ratioInterruptComputes).round(4),
 
     #   "averageExecutionTime" => combined_mean_execution.round(4),
-    #   "stdDevExecutionTime" => executionTimes.standard_deviation.round(4),
+    #   "stdDevExecutionTime" => standard_deviation_sample(executionTimes).round(4),
     #   "executionTimeUnit" => executionTimeUnit,
 
     #   "averageEnergyConsumption" => combined_mean_energy.round(4),
-    #   "PooledstdDevEnergyConsumption" => pooled_std_dev_energy.round(4),
+    #   "stdDevEnergyConsumption" => (standard_deviation_sample(energyConsumptions)).round(4),
+    #   # "PooledstdDevEnergyConsumption" => pooled_std_dev_energy.round(4),
     #   "energyConsumptionUnit" => energy_consumption_unit, # mJ because we rescaled it once
     # }
 
     jsonHash["summary"][seed]["singleTraversal"]= {
       "singleTraversalAverageExecutionTime" => (combined_mean_execution/nbActions).round(4),
-      "singleTraversalStdDevExecutionTime" => (executionTimes.standard_deviation/Math.sqrt(nbActions)).round(4),
+      "singleTraversalStdDevExecutionTime" => (standard_deviation_sample(executionTimes)/nbActions).round(4),
       "singleTraversalexecutionTimeUnit" => executionTimeUnit,
 
-
       "singleTraversalAverageEnergyConsumption" => ((combined_mean_energy/nbActions)*1e3).round(4), 
-      "singleTraversalPooledstdDevEnergyConsumption" => ((pooled_std_dev_energy/Math.sqrt(nbActions))*1e3).round(4), # rescaling the unit
+      "singleTraversalStdDevEnergyConsumption" => ((standard_deviation_sample(energyConsumptions)/nbActions)*1e3).round(4),
+      # PooledStdDev yields a similar result to stdDev
+      # "singleTraversalPooledstdDevEnergyConsumption" => ((pooled_std_dev_energy/nbActions)*1e3).round(4), # rescaling the unit
       "singleTraversalEnergyConsumptionUnit" => "uJ" # unit rescaled twice J -> uJ. 1J * 1e6 = 1000000uJ
     }
 
     # Can be commented for insight on the calculus
 
     # Remove the processed samples from jsonHash["samples"]
-    jsonHash["samples"].delete_if { |sample| sample["seed"] == seed }
+    #jsonHash["samples"].delete_if { |sample| sample["seed"] == seed }
   end
 end
 
