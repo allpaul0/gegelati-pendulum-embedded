@@ -33,3 +33,10 @@ mv TPG_microbenchmarks/mult_int/assembly.txt TPG_microbenchmarks/mult_int/CodeGe
 ruby scripts/logToJsonEnergy.rb TPG_10v/double_base/inference/2024-08-21_11-29-44/energy.log TPG_10v/double_base/inference/2024-08-21_11-29-44/energy_data2.json
 # 2. Generate plot 
 /usr/bin/python3 /home/paulallaire/dev/gegelati-pendulum-embedded/gegelati-pendulum-embedded/scripts/poster_ACACES_2024/energybenchmarks.py
+
+# launch seedsgraphtraversal generation from gegelati-pendulum-embedded/Trainer-Generator/bin
+make SeedsGraphTraversal && cd Release/ && ./SeedsGraphTraversal ../../../TPG_10v/double_base/CodeGen/best_root_pruned.dot 0 && code Results/seeds_nbActionsToTerminal.h && cd ../
+mv Release/Results/seeds_nbActionsToTerminal.h ../../TPG_10v/double_base/PreCalcul/.
+
+# launch CallGraphLevelLogToJson to generate energy_data.json again from energy.log 
+ruby scripts/CallGraphLevelLogToJson.rb TPG_10v/double_base/inference/2024-12-05_15-26-45/energy.log TPG_10v/double_base/inference/2024-12-05_15-26-45/energy_data.json

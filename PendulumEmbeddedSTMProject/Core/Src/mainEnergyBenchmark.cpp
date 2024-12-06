@@ -52,7 +52,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define NB_SAMPLES 1 //3
+#define NB_SAMPLES 1 // 3 
 
 /* USER CODE END PD */
 
@@ -70,9 +70,9 @@ PendulumExecutionEnvironment* pendulumEE_ptr;
 #if INSTRUCTION_LEVEL_ANALYSIS == 1
     uint32_t nbActions = 1;  // Number of actions per inference
 #elif INSTRUCTION_LEVEL_ANALYSIS == 0 && GRAPH_LEVEL_ANALYSIS == 1 &&  TYPE_INT == 1
-    uint32_t nbActions = 500000;  // Set nbActions to 500000 if TYPE_INT is 1
+    uint32_t nbActions = 15000;//20000;  // Set nbActions to 500000 if TYPE_INT is 1
 #elif INSTRUCTION_LEVEL_ANALYSIS == 0 && GRAPH_LEVEL_ANALYSIS == 1 &&  TYPE_INT == 0
-    uint32_t nbActions = 50000;   // Default to 50000 if TYPE_INT is not 1
+    uint32_t nbActions = 3000;// 5000;   // Default to 50000 if TYPE_INT is 0
 #endif
 double initAngle = 0.0;
 double initVelocity = 0.0;
@@ -164,7 +164,7 @@ int main(void)
 
 	// Reset pendulum environment and store the initial conditions
 #if GRAPH_LEVEL_ANALYSIS == 1
-    uint16_t nbSeeds = 100; //NB_SEED;
+  uint16_t nbSeeds = NB_SEED; //100
 	pendulumEE.reset(seeds[0]);
 #else
 	pendulumEE.reset(seed);
@@ -207,7 +207,6 @@ int main(void)
 		while (buffStart != '\n'); // (ACK) signal is a newline character
 
 	  int coeff = COEFF_DYNAMIC_OPPENING;
-    std::cout << logStartBench << std::endl;
 
 #if TYPE_INT == 1
 	  std::cout << "TYPE_INT=1, COEFF_DYNAMIC_OPPENING:" << coeff << std::endl;
@@ -223,7 +222,8 @@ int main(void)
               << "PENDULUM_TRACE: " << pt << std::endl;
 
 #if GRAPH_LEVEL_ANALYSIS == 1
-    for(int idSeed=0; idSeed<5; idSeed++){
+    std::cout << "NB_SEED: " << NB_SEED << std::endl;
+    for(int idSeed=0; idSeed<nbSeeds; idSeed++){
 #endif
       for(int idSample=0; idSample<NB_SAMPLES; idSample++){
         

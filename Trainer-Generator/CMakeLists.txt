@@ -93,6 +93,11 @@ set(VALIDATION_TARGET Validation)
 add_executable(${VALIDATION_TARGET} src/mainValidation.cpp ${files})
 target_link_libraries(${VALIDATION_TARGET} ${GEGELATI_LIBRARIES})
 
+set(SEEDS_GRAPH_TRAVERSAL_TARGET SeedsGraphTraversal)
+add_executable(${SEEDS_GRAPH_TRAVERSAL_TARGET} src/mainSeedsGraphTraversal.cpp ${files})
+target_link_libraries(${SEEDS_GRAPH_TRAVERSAL_TARGET} ${GEGELATI_LIBRARIES})
+
+
 # Test variables
 message("Project configuration :")
 message("Build type : ${CMAKE_BUILD_TYPE}")
